@@ -30,8 +30,8 @@ export default function UsernameLoginForm() {
         return;
       }
 
-      if (profile.is_admin) {
-        setError('This is an Admin Account: Please Log in as an Admin');
+      if (!profile.is_admin) {
+        setError('Access denied: Not an admin user');
         return;
       }
 
@@ -48,7 +48,7 @@ export default function UsernameLoginForm() {
         return;
       }
 
-      router.push('/userdashboard');
+      router.push('/admindashboard');
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
     } finally {
@@ -58,7 +58,7 @@ export default function UsernameLoginForm() {
 
   return (
     <div className="max-w-md mx-auto mt-16 p-8 bg-white shadow-lg rounded-xl">
-      <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">User Login</h1>
+      <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Admin Login</h1>
       <form onSubmit={handleLogin} className="space-y-4">
         <input
           type="text"
@@ -86,8 +86,8 @@ export default function UsernameLoginForm() {
         </button>
       </form>
       <div className="mt-4 text-sm text-center text-gray-600">
-        <Link href="/userauth/adminlogin" className="text-blue-600 hover:underline">
-          Login as admin?
+        <Link href="/userauth/login" className="text-blue-600 hover:underline">
+          Login as User?
         </Link>
       </div>
     </div>

@@ -6,10 +6,9 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 const navItems = [
-  { label: 'Part Library', href: '/parts' },
-  { label: 'Projects', href: '/projects' },
-  { label: 'Inventory', href: '/inventory' },
-  { label: 'Suppliers', href: '/suppliers' },
+  { label: 'Users', href: '/parts' },
+  { label: 'Add User', href: '/projects' },
+  { label: 'Manage Permissions', href: '/inventory' },
 ]
 
 export default function Navbar() {
@@ -23,10 +22,10 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    router.push('/userauth/login') // or your preferred login route
+    router.push('/userauth/login')
   }
 
-  if (!mounted) return null // wait until client hydration
+  if (!mounted) return null
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
