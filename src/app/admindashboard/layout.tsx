@@ -1,4 +1,5 @@
 import AdminNavbar from '@/components/AdminNavbar';
+import AdminProtectedPageWrapper from '@/components/AdminProtectedPageWrapper';
 import { ReactNode } from 'react';
 
 export default function AdminPage({ children }: { children: ReactNode }) {
@@ -6,7 +7,9 @@ export default function AdminPage({ children }: { children: ReactNode }) {
     <div>
       <AdminNavbar />
       <main className="p-6">
-        {children}
+         <AdminProtectedPageWrapper> 
+         {children} 
+        </AdminProtectedPageWrapper> 
       </main>
     </div>
   );

@@ -26,7 +26,7 @@ export default function ProtectedPageWrapper({ children }: { children: React.Rea
         .eq('id', session.user.id)
         .single()
 
-      if (error || profile?.is_admin) {
+      if (error || !profile?.is_admin) {
         await supabase.auth.signOut()
         router.replace('/userauth/login')
         return

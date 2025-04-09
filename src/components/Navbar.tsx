@@ -23,16 +23,16 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    router.push('/userauth/login') // or your preferred login route
+    router.push('/userauth/login')
   }
 
-  if (!mounted) return null // wait until client hydration
+  if (!mounted) return null
 
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <Link href="/" className="text-2xl font-semibold tracking-tight text-gray-900">
-          <span className="text-blue-600">Part</span>Keep
+    <nav className="bg-[#001f3f] border-b border-blue-900 sticky top-0 z-50">
+      <div className="max-w-7xl px-4 sm:px-6 lg:px-8 h-12 flex items-center justify-between">
+        <Link href="/" className="text-2xl font-semibold tracking-tight text-white">
+          <span className="text-yellow-400">Part</span>Keep
         </Link>
         <div className="flex gap-6 items-center">
           {navItems.map(({ label, href }) => (
@@ -41,8 +41,8 @@ export default function Navbar() {
               href={href}
               className={`text-sm font-medium transition-colors ${
                 pathname === href
-                  ? 'text-black'
-                  : 'text-gray-500 hover:text-black'
+                  ? 'text-white'
+                  : 'text-blue-200 hover:text-white'
               }`}
             >
               {label}
@@ -50,7 +50,7 @@ export default function Navbar() {
           ))}
           <button
             onClick={handleLogout}
-            className="text-sm font-medium text-red-500 hover:text-red-700 transition"
+            className="text-sm font-medium text-red-300 hover:text-white transition"
           >
             Log Out
           </button>

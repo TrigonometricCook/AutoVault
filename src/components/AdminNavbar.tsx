@@ -29,7 +29,7 @@ export default function Navbar() {
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-12 flex items-center justify-between">
         <Link href="/" className="text-2xl font-semibold tracking-tight text-gray-900">
           <span className="text-blue-600">Part</span>Keep
         </Link>
