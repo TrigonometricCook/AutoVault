@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 const navItems = [
-  { label: 'Dashboard', href: '/parts' },
+  { label: 'Dashboard', href: '/admindash' },
   { label: 'Projects', href: '/projects' },
   { label: 'Inventory', href: '/inventory' },
   { label: 'Suppliers', href: '/suppliers' },

@@ -18,7 +18,7 @@ export default function UsernameLoginForm() {
     setLoading(true);
 
     try {
-      // Step 1: Get email and admin status from profiles using username
+      // Step 1: Check if the user exists in the profiles table
       const { data: profile, error: fetchError } = await supabase
         .from('profiles')
         .select('email, is_admin')
@@ -27,17 +27,20 @@ export default function UsernameLoginForm() {
 
       if (fetchError || !profile?.email) {
         setError('Invalid username');
+        setLoading(false);
         return;
       }
 
+      // Step 2: Check if the user is an admin (admin users can't log in here)
       if (profile.is_admin) {
         setError('This is an Admin Account: Please Log in as an Admin');
+        setLoading(false);
         return;
       }
 
       const email = profile.email;
 
-      // Step 2: Login with email + password
+      // Step 3: Login with email + password
       const { error: loginError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -45,13 +48,14 @@ export default function UsernameLoginForm() {
 
       if (loginError) {
         setError('Incorrect password');
+        setLoading(false);
         return;
       }
 
+      // Step 4: Redirect to user dashboard
       router.push('/userdashboard');
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
-    } finally {
       setLoading(false);
     }
   };
