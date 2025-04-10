@@ -6,9 +6,10 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 const navItems = [
-  { label: 'Users', href: '/parts' },
-  { label: 'Add User', href: '/projects' },
-  { label: 'Manage Permissions', href: '/inventory' },
+  { label: 'Dashboard', href: '/parts' },
+  { label: 'Projects', href: '/projects' },
+  { label: 'Inventory', href: '/inventory' },
+  { label: 'Suppliers', href: '/suppliers' },
 ]
 
 export default function Navbar() {
@@ -28,10 +29,10 @@ export default function Navbar() {
   if (!mounted) return null
 
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-12 flex items-center justify-between">
-        <Link href="/" className="text-2xl font-semibold tracking-tight text-gray-900">
-          <span className="text-blue-600">Part</span>Keep
+    <nav className="bg-[#001f3f] border-b border-blue-900 sticky top-0 z-50">
+      <div className="max-w-7xl px-4 sm:px-6 lg:px-8 h-12 flex items-center justify-between">
+        <Link href="/" className="text-2xl font-semibold tracking-tight text-white">
+          <span className="text-yellow-400">Part</span>Keep
         </Link>
         <div className="flex gap-6 items-center">
           {navItems.map(({ label, href }) => (
@@ -40,8 +41,8 @@ export default function Navbar() {
               href={href}
               className={`text-sm font-medium transition-colors ${
                 pathname === href
-                  ? 'text-black'
-                  : 'text-gray-500 hover:text-black'
+                  ? 'text-white'
+                  : 'text-blue-200 hover:text-white'
               }`}
             >
               {label}
@@ -49,7 +50,7 @@ export default function Navbar() {
           ))}
           <button
             onClick={handleLogout}
-            className="text-sm font-medium text-red-500 hover:text-red-700 transition"
+            className="text-sm font-medium text-red-300 hover:text-white transition"
           >
             Log Out
           </button>

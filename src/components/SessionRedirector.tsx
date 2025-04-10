@@ -1,13 +1,17 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
 export default function SessionRedirector() {
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
+    // Only run on the root route
+    if (pathname !== '/') return;
+
     const checkAndRedirect = async () => {
       const {
         data: { session },
@@ -32,14 +36,14 @@ export default function SessionRedirector() {
       }
 
       if (profile.is_admin) {
-        router.replace('/admindashboard');
+        router.replace('/admindash');
       } else {
         router.replace('/userdashboard');
       }
     };
 
     checkAndRedirect();
-  }, [router]);
+  }, [router, pathname]);
 
   return null;
 }

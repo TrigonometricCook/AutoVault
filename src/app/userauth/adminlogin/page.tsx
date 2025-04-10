@@ -48,7 +48,7 @@ export default function UsernameLoginForm() {
         return;
       }
 
-      router.push('/admindashboard');
+      router.push('/admindash');
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
     } finally {
