@@ -3,9 +3,8 @@ import { supabase } from '@/lib/supabase';
 import { ShieldCheck, User, RefreshCcw, ArrowDownCircle, Filter, Edit2, Trash } from 'lucide-react';
 
 type UserData = {
-  id: any;
-  username: any;
-  email: any;
+  username: string;
+  email: string;
   is_admin: boolean;
   role: string;
 };
@@ -29,7 +28,7 @@ export default function UserTable({ onEditUser }: UserTableProps) {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, username, email, is_admin, role');
+          .select('username, email, is_admin, role');
 
         if (error) throw error;
         setUsers(data || []);
@@ -49,7 +48,7 @@ export default function UserTable({ onEditUser }: UserTableProps) {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, email, is_admin, role');
+        .select('username, email, is_admin, role');
 
       if (error) throw error;
       setUsers(data || []);
@@ -60,7 +59,7 @@ export default function UserTable({ onEditUser }: UserTableProps) {
     }
   };
 
-  const handleDelete = async (userId: string) => {
+  const handleDelete = async (username: string) => {
     const confirmDelete = window.confirm('Are you sure you want to delete this user?');
     if (!confirmDelete) return;
 
@@ -70,11 +69,11 @@ export default function UserTable({ onEditUser }: UserTableProps) {
       const { error: deleteError } = await supabase
         .from('profiles')
         .delete()
-        .eq('id', userId);
+        .eq('username', username);
 
       if (deleteError) throw deleteError;
 
-      setUsers(users.filter(user => user.id !== userId));
+      setUsers(users.filter(user => user.username !== username));
     } catch (err: any) {
       setError(err.message || 'Failed to delete user.');
     } finally {
@@ -149,7 +148,7 @@ export default function UserTable({ onEditUser }: UserTableProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {sortedUsers.map((user) => (
           <div
-            key={user.id}
+            key={user.username}
             className="flex items-center gap-6 border border-gray-200 rounded-2xl p-6 shadow-lg bg-white hover:shadow-xl transition duration-300 ease-in-out transform hover:scale-105"
           >
             <div className="w-16 h-16 flex items-center justify-center rounded-full bg-gray-100">
@@ -181,7 +180,7 @@ export default function UserTable({ onEditUser }: UserTableProps) {
               </button>
               <button
                 className="p-2 rounded-lg bg-transparent text-red-600"
-                onClick={() => handleDelete(user.id)}
+                onClick={() => handleDelete(user.username)}
               >
                 <Trash className="w-5 h-5" />
               </button>

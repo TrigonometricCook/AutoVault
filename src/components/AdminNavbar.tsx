@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase'
 
 const navItems = [
   
-  { label: 'Components', href: '/projects' },
+  { label: 'Components', href: '/pages/components' },
   { label: 'Assemblies', href: '/inventory' },
   { label: 'Projects', href: '/suppliers' },
   { label: 'Inventory', href: '/suppliers1' },

@@ -5,7 +5,6 @@ import { supabase } from '@/lib/supabase';
 
 interface EditUserProps {
   user: {
-    id: string;
     username: string;
     email: string;
     role: string;
@@ -34,7 +33,7 @@ export default function EditUser({ user, onCancel }: EditUserProps) {
       isAdmin: user.is_admin ?? false,
       newPassword: '',
     });
-  }, [user]);  
+  }, [user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -55,7 +54,7 @@ export default function EditUser({ user, onCancel }: EditUserProps) {
       return;
     }
 
-    // Update the profile fields (excluding password)
+    // Update user data
     const { error: updateError } = await supabase
       .from('profiles')
       .update({
@@ -64,21 +63,21 @@ export default function EditUser({ user, onCancel }: EditUserProps) {
         role,
         is_admin: isAdmin,
       })
-      .eq('id', user.id);
+      .eq('username', user.username); // using username as primary key
 
     if (updateError) {
       setError(updateError.message);
       return;
     }
 
-    // If new password provided, update it in the profiles table
+    // Update password if provided
     if (newPassword) {
       const { error: passwordError } = await supabase
         .from('profiles')
         .update({
-          password: newPassword, // We are directly updating the password
+          password: newPassword,
         })
-        .eq('id', user.id);
+        .eq('username', user.username);
 
       if (passwordError) {
         setError(passwordError.message);
