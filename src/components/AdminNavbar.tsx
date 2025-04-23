@@ -6,10 +6,14 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 const navItems = [
-  { label: 'Dashboard', href: '/admindash' },
-  { label: 'Projects', href: '/projects' },
-  { label: 'Inventory', href: '/inventory' },
-  { label: 'Suppliers', href: '/suppliers' },
+  
+  { label: 'Components', href: '/projects' },
+  { label: 'Assemblies', href: '/inventory' },
+  { label: 'Projects', href: '/suppliers' },
+  { label: 'Inventory', href: '/suppliers1' },
+  { label: 'Marketplace', href: '/suppliers2' },
+  { label: 'Users', href: '/pages/users' },
+
 ]
 
 export default function Navbar() {
@@ -23,16 +27,16 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    router.push('/userauth/login')
+    router.push('/')
   }
 
   if (!mounted) return null
 
   return (
     <nav className="bg-[#001f3f] border-b border-blue-900 sticky top-0 z-50">
-      <div className="max-w-7xl px-4 sm:px-6 lg:px-8 h-12 flex items-center justify-between">
+      <div className="max-w-8xl px-4 sm:px-6 lg:px-16 h-12 flex items-center justify-between">
         <Link href="/" className="text-2xl font-semibold tracking-tight text-white">
-          <span className="text-yellow-400">Part</span>Keep
+          <span className="text-yellow-400">Auto</span>Vault
         </Link>
         <div className="flex gap-6 items-center">
           {navItems.map(({ label, href }) => (

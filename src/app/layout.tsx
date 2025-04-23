@@ -9,7 +9,7 @@ import AdminNavbar from "@/components/AdminNavbar";
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  if (pathname.startsWith('/userauth')) {
+  if (!pathname.startsWith('/pages')) {
     return (
       <html lang="en">
         <body className="antialiased bg-white text-black">
@@ -21,7 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     );
   }
 
-  const isAdminPage = pathname.startsWith('/admindash');
+  const isAdminPage = pathname.startsWith('/pages');
 
   return (
     <html lang="en">
