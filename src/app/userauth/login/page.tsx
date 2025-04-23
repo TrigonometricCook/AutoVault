@@ -18,44 +18,37 @@ export default function UsernameLoginForm() {
     setLoading(true);
 
     try {
-      // Step 1: Check if the user exists in the profiles table
       const { data: profile, error: fetchError } = await supabase
         .from('profiles')
-        .select('email, is_admin')
+        .select('username, password_hash, is_admin')
         .eq('username', username)
         .single();
 
-      if (fetchError || !profile?.email) {
-        setError('Invalid username');
+      if (fetchError || !profile) {
+        setError('Invalid username or password');
         setLoading(false);
         return;
       }
 
-      // Step 2: Check if the user is an admin (admin users can't log in here)
+      // Disallow admin users from logging in here
       if (profile.is_admin) {
         setError('This is an Admin Account: Please Log in as an Admin');
         setLoading(false);
         return;
       }
 
-      const email = profile.email;
-
-      // Step 3: Login with email + password
-      const { error: loginError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (loginError) {
-        setError('Incorrect password');
+      // ⚠️ Plaintext comparison — OK for demo only
+      if (profile.password_hash !== password) {
+        setError('Invalid username or password');
         setLoading(false);
         return;
       }
 
-      // Step 4: Redirect to user dashboard
+      localStorage.setItem('loggedInUser', profile.username);
       router.push('/userdashboard');
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
+    } finally {
       setLoading(false);
     }
   };

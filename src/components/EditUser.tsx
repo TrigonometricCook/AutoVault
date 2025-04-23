@@ -1,20 +1,40 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
-export default function AddUser() {
+interface EditUserProps {
+  user: {
+    id: string;
+    username: string;
+    email: string;
+    role: string;
+    is_admin: boolean;
+  };
+  onCancel: () => void;
+}
+
+export default function EditUser({ user, onCancel }: EditUserProps) {
   const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    role: '',
-    isAdmin: false,
+    username: user.username,
+    email: user.email,
+    role: user.role,
+    isAdmin: user.is_admin,
+    newPassword: '', // 🔐 New password field
   });
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    setFormData({
+      username: user.username ?? '',
+      email: user.email ?? '',
+      role: user.role ?? '',
+      isAdmin: user.is_admin ?? false,
+      newPassword: '',
+    });
+  }, [user]);  
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -28,65 +48,51 @@ export default function AddUser() {
     setError('');
     setSuccess('');
 
-    const { username, email, password, confirmPassword, role, isAdmin } = formData;
+    const { username, email, role, isAdmin, newPassword } = formData;
 
-    // Validate form fields
-    if (!username || !email || !password || !confirmPassword || !role) {
+    if (!username || !email || !role) {
       setError('All fields are required.');
       return;
     }
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.');
-      return;
-    }
-
-    // Check if username already exists
-    const { data: existingUserByUsername, error: checkUsernameError } = await supabase
+    // Update the profile fields (excluding password)
+    const { error: updateError } = await supabase
       .from('profiles')
-      .select('username')
-      .eq('username', username)
-      .single();
+      .update({
+        username,
+        email,
+        role,
+        is_admin: isAdmin,
+      })
+      .eq('id', user.id);
 
-    if (checkUsernameError && checkUsernameError.code !== 'PGRST116') {  // Ignore if no data found
-      setError('Error checking username.');
+    if (updateError) {
+      setError(updateError.message);
       return;
     }
 
-    if (existingUserByUsername) {
-      setError('Username already taken.');
-      return;
+    // If new password provided, update it in the profiles table
+    if (newPassword) {
+      const { error: passwordError } = await supabase
+        .from('profiles')
+        .update({
+          password: newPassword, // We are directly updating the password
+        })
+        .eq('id', user.id);
+
+      if (passwordError) {
+        setError(passwordError.message);
+        return;
+      }
     }
 
-    // Insert user into profiles table
-    const { error: insertError } = await supabase.from('profiles').insert({
-      username,
-      email,
-      password,
-      role,
-      is_admin: isAdmin,
-    });
-
-    if (insertError) {
-      setError(insertError.message);
-      return;
-    }
-
-    setSuccess('User added successfully!');
-    setFormData({
-      username: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      role: '',
-      isAdmin: false,
-    });
+    setSuccess('User updated successfully!');
   };
 
   return (
     <div className="bg-white flex justify-center items-start py-0">
       <div className="max-w-lg w-full mx-auto p-8 bg-[#003366] rounded-lg shadow-lg flex flex-col">
-        <h2 className="text-xl font-semibold mb-6 text-center text-white">Add User</h2>
+        <h2 className="text-xl font-semibold mb-6 text-center text-white">Edit User</h2>
 
         <div className="space-y-6">
           <input
@@ -106,27 +112,19 @@ export default function AddUser() {
             onChange={handleChange}
           />
           <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            className="w-full bg-white border px-4 py-2 rounded-md"
-            value={formData.password}
-            onChange={handleChange}
-          />
-          <input
-            type="password"
-            name="confirmPassword"
-            placeholder="Confirm Password"
-            className="w-full bg-white border px-4 py-2 rounded-md"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-          />
-          <input
             type="text"
             name="role"
-            placeholder="Role (e.g., Admin or User)"
+            placeholder="Role"
             className="w-full bg-white border px-4 py-2 rounded-md"
             value={formData.role}
+            onChange={handleChange}
+          />
+          <input
+            type="password"
+            name="newPassword"
+            placeholder="New Password (leave blank to keep current)"
+            className="w-full bg-white border px-4 py-2 rounded-md"
+            value={formData.newPassword}
             onChange={handleChange}
           />
           <div className="flex items-center space-x-3">
@@ -138,7 +136,7 @@ export default function AddUser() {
               onChange={handleChange}
               className="accent-blue-600"
             />
-            <label htmlFor="isAdmin" className="text-sm text-white">Grant Admin Privileges</label>
+            <label htmlFor="isAdmin" className="text-sm text-white">Admin Privileges</label>
           </div>
 
           {error && <p className="text-red-600 text-sm text-center">{error}</p>}
@@ -148,7 +146,13 @@ export default function AddUser() {
             onClick={handleSubmit}
             className="w-full bg-white text-[#003366] py-2 rounded-md hover:bg-gray-200"
           >
-            Add User
+            Save Changes
+          </button>
+          <button
+            onClick={onCancel}
+            className="w-full bg-gray-300 text-[#003366] py-2 rounded-md hover:bg-gray-400 mt-2"
+          >
+            Cancel
           </button>
         </div>
       </div>

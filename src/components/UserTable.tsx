@@ -2,8 +2,20 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { ShieldCheck, User, RefreshCcw, ArrowDownCircle, Filter, Edit2, Trash } from 'lucide-react';
 
-export default function UserTable() {
-  const [users, setUsers] = useState<Array<{ id: any; username: any; email: any; is_admin: any }>>([]);
+type UserData = {
+  id: any;
+  username: any;
+  email: any;
+  is_admin: boolean;
+  role: string;
+};
+
+type UserTableProps = {
+  onEditUser: (user: UserData) => void;
+};
+
+export default function UserTable({ onEditUser }: UserTableProps) {
+  const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [sortBy, setSortBy] = useState<'username' | 'email'>('username');
@@ -17,7 +29,7 @@ export default function UserTable() {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, username, email, is_admin');
+          .select('id, username, email, is_admin, role');
 
         if (error) throw error;
         setUsers(data || []);
@@ -37,7 +49,7 @@ export default function UserTable() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, email, is_admin');
+        .select('id, username, email, is_admin, role');
 
       if (error) throw error;
       setUsers(data || []);
@@ -50,20 +62,18 @@ export default function UserTable() {
 
   const handleDelete = async (userId: string) => {
     const confirmDelete = window.confirm('Are you sure you want to delete this user?');
-    if (!confirmDelete) return; // If the user cancels, exit the function
+    if (!confirmDelete) return;
 
     setLoading(true);
     setError('');
     try {
-      // Delete user from the profiles table
-      const { error: deleteProfileError } = await supabase
+      const { error: deleteError } = await supabase
         .from('profiles')
         .delete()
         .eq('id', userId);
 
-      if (deleteProfileError) throw deleteProfileError;
+      if (deleteError) throw deleteError;
 
-      // Successfully deleted, now refresh the user list
       setUsers(users.filter(user => user.id !== userId));
     } catch (err: any) {
       setError(err.message || 'Failed to delete user.');
@@ -72,19 +82,20 @@ export default function UserTable() {
     }
   };
 
-  const filteredUsers = users.filter((user) => {
-    if (filterBy === 'admin') return user.is_admin;
-    if (filterBy === 'user') return !user.is_admin;
-    return true; // Show all users
-  }).filter((user) => {
-    return user.username.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  const filteredUsers = users
+    .filter((user) => {
+      if (filterBy === 'admin') return user.is_admin;
+      if (filterBy === 'user') return !user.is_admin;
+      return true;
+    })
+    .filter((user) =>
+      user.username.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
   const sortedUsers = filteredUsers.sort((a, b) => {
-    if (sortBy === 'username') {
-      return a.username.localeCompare(b.username);
-    }
-    return a.email.localeCompare(b.email);
+    return sortBy === 'username'
+      ? a.username.localeCompare(b.username)
+      : a.email.localeCompare(b.email);
   });
 
   if (loading) return <p className="text-center text-xl font-semibold">Loading users...</p>;
@@ -92,9 +103,8 @@ export default function UserTable() {
 
   return (
     <div className="space-y-6">
-      {/* Navbar-like bar at the top */}
+      {/* Top bar */}
       <div className="bg-[#003366] text-white p-4 rounded-t-xl rounded-b-xl flex items-center shadow-lg w-full max-w-5xl mx-auto">
-        {/* Search bar taking up the rest of the space */}
         <input
           type="text"
           placeholder="Search by username..."
@@ -103,27 +113,31 @@ export default function UserTable() {
           onChange={(e) => setSearchQuery(e.target.value)}
         />
 
-        {/* Right-aligned icon buttons */}
         <div className="flex gap-4 ml-4">
-          {/* Refresh Button */}
           <button
             onClick={handleRefresh}
             className="p-3 w-12 h-12 rounded-lg bg-white text-[#003366]"
           >
             <RefreshCcw className="w-6 h-6" />
           </button>
-
-          {/* Sort Button as Icon */}
           <button
-            onClick={() => setSortBy(sortBy === 'username' ? 'email' : 'username')}
+            onClick={() =>
+              setSortBy(sortBy === 'username' ? 'email' : 'username')
+            }
             className="p-3 w-12 h-12 rounded-lg bg-white text-[#003366]"
           >
             <ArrowDownCircle className="w-6 h-6" />
           </button>
-
-          {/* Filter Button as Icon */}
           <button
-            onClick={() => setFilterBy(filterBy === 'all' ? 'admin' : filterBy === 'admin' ? 'user' : 'all')}
+            onClick={() =>
+              setFilterBy(
+                filterBy === 'all'
+                  ? 'admin'
+                  : filterBy === 'admin'
+                  ? 'user'
+                  : 'all'
+              )
+            }
             className="p-3 w-12 h-12 rounded-lg bg-white text-[#003366]"
           >
             <Filter className="w-6 h-6" />
@@ -131,7 +145,7 @@ export default function UserTable() {
         </div>
       </div>
 
-      {/* User list in a 2-column grid layout */}
+      {/* User cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {sortedUsers.map((user) => (
           <div
@@ -147,18 +161,22 @@ export default function UserTable() {
             </div>
 
             <div className="flex-1 max-w-full">
-              {/* Username with overflow handling */}
-              <div className="font-semibold text-lg text-gray-800 truncate w-full overflow-hidden">{user.username}</div>
-              {/* Email with overflow handling */}
-              <div className="text-sm text-gray-600 truncate w-full overflow-hidden">{user.email}</div>
+              <div className="font-semibold text-lg text-gray-800 truncate w-full">
+                {user.username}
+              </div>
+              <div className="text-sm text-gray-600 truncate w-full">
+                {user.email}
+              </div>
               <div className="text-sm mt-2 text-gray-500">
-                {user.is_admin ? 'Admin' : 'User'}
+                {user.is_admin ? 'Admin' : user.role}
               </div>
             </div>
 
-            {/* Icon buttons for edit and delete */}
             <div className="flex gap-3">
-              <button className="p-2 rounded-lg bg-transparent text-gray-600">
+              <button
+                className="p-2 rounded-lg bg-transparent text-gray-600"
+                onClick={() => onEditUser(user)}
+              >
                 <Edit2 className="w-5 h-5" />
               </button>
               <button
