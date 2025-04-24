@@ -14,7 +14,7 @@ create table public.profiles (
   username character varying(50) not null,
   password text not null,
   email character varying(100) null,
-  constraint profiles_pkey primary key (username),
+  constraint profiles_pkey primary key (username)
 ) TABLESPACE pg_default;
 
 
@@ -32,16 +32,20 @@ create table public.permissions (
 ) TABLESPACE pg_default;
 
 
-CREATE TABLE public.employees (
-  employee_id INTEGER NOT NULL,
-  first_name VARCHAR(50) NOT NULL,
-  last_name VARCHAR(50) NOT NULL,
-  role_id INTEGER NOT NULL,
-  username VARCHAR(50) NOT NULL,
-  CONSTRAINT employees_pkey PRIMARY KEY (employee_id),
-  CONSTRAINT employees_username_fkey FOREIGN KEY (username) REFERENCES profiles (username),
-  CONSTRAINT employees_role_id_fkey FOREIGN KEY (role_id) REFERENCES roles (role_id),
-  CONSTRAINT employees_employee_id_check CHECK (
-    (employee_id >= 10000) AND (employee_id <= 99999)
+create table public.employees (
+  employee_id integer not null,
+  first_name character varying(50) not null,
+  last_name character varying(50) not null,
+  role_id integer not null,
+  username character varying(50) not null,
+  phone text null,
+  constraint employees_pkey primary key (employee_id),
+  constraint employees_role_id_fkey foreign KEY (role_id) references roles (role_id),
+  constraint employees_username_fkey foreign KEY (username) references profiles (username),
+  constraint employees_employee_id_check check (
+    (
+      (employee_id >= 10000)
+      and (employee_id <= 99999)
+    )
   )
 ) TABLESPACE pg_default;

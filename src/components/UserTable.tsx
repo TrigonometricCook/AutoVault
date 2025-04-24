@@ -25,15 +25,18 @@ export default function UserTable({ onEditUser }: UserTableProps) {
     setError('');
     try {
       const { data, error } = await supabase
-        .from('profiles')
-        .select('username, email, roles(role_name)')
-        .returns<UserData[]>(); // Make sure to cast the shape appropriately
+        .from('employees')
+        .select(`
+          username,
+          profiles ( email ),
+          roles ( role_name )
+        `);
 
       if (error) throw error;
 
       const formatted = data.map((user: any) => ({
         username: user.username,
-        email: user.email,
+        email: user.profiles?.email || '',
         role: user.roles?.role_name || 'Unknown',
       }));
 
@@ -58,12 +61,19 @@ export default function UserTable({ onEditUser }: UserTableProps) {
     setLoading(true);
     setError('');
     try {
-      const { error: deleteError } = await supabase
+      const { error: employeeError } = await supabase
+        .from('employees')
+        .delete()
+        .eq('username', username);
+
+      if (employeeError) throw employeeError;
+
+      const { error: profileError } = await supabase
         .from('profiles')
         .delete()
         .eq('username', username);
 
-      if (deleteError) throw deleteError;
+      if (profileError) throw profileError;
 
       setUsers(users.filter(user => user.username !== username));
     } catch (err: any) {
