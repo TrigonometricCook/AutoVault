@@ -3,7 +3,7 @@
 import "./globals.css";
 import SessionRedirector from '@/components/SessionRedirector';
 import { usePathname } from 'next/navigation';
-import Navbar from "@/components/Navbar";
+import Navbar from "../components/Navbar";
 import AdminNavbar from "@/components/AdminNavbar";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

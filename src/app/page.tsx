@@ -17,26 +17,34 @@ export default function UsernameLoginForm() {
     setLoading(true);
 
     try {
-      const { data: profile, error: fetchError } = await supabase
+      // Step 1: Check if the user exists in the profiles table
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('username, password')
+        .select('email')
         .eq('username', username)
         .single();
 
-      if (fetchError || !profile) {
+      if (profileError || !profile) {
         setError('Invalid username or password');
         setLoading(false);
         return;
       }
 
-      if (profile.password !== password) {
+      // Step 2: Try to sign in using Supabase Auth with the email from the profile
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: profile.email,
+        password,
+      });
+
+      if (signInError) {
         setError('Invalid username or password');
         setLoading(false);
         return;
       }
 
-      localStorage.setItem('loggedInUser', profile.username);
-      router.push('/pages/users'); // Adjust this route as needed
+      // If login is successful, store the username in localStorage
+      localStorage.setItem('loggedInUser', username);
+      router.push('/pages/users');
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
     } finally {

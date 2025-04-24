@@ -1,0 +1,47 @@
+create table public.roles (
+  role_id integer not null,
+  role_name character varying(50) not null,
+  constraint roles_pkey primary key (role_id),
+  constraint roles_role_id_check check (
+    (
+      (role_id >= 10000)
+      and (role_id <= 99999)
+    )
+  )
+) TABLESPACE pg_default;
+
+create table public.profiles (
+  username character varying(50) not null,
+  password text not null,
+  email character varying(100) null,
+  constraint profiles_pkey primary key (username),
+) TABLESPACE pg_default;
+
+
+create table public.permissions (
+  permission_id serial not null,
+  role_id integer not null,
+  entity_name character varying(50) not null,
+  can_create boolean null default false,
+  can_read boolean null default true,
+  can_update boolean null default false,
+  can_delete boolean null default false,
+  constraint permissions_pkey primary key (permission_id),
+  constraint permissions_role_id_entity_name_key unique (role_id, entity_name),
+  constraint permissions_role_id_fkey foreign KEY (role_id) references roles (role_id)
+) TABLESPACE pg_default;
+
+
+CREATE TABLE public.employees (
+  employee_id INTEGER NOT NULL,
+  first_name VARCHAR(50) NOT NULL,
+  last_name VARCHAR(50) NOT NULL,
+  role_id INTEGER NOT NULL,
+  username VARCHAR(50) NOT NULL,
+  CONSTRAINT employees_pkey PRIMARY KEY (employee_id),
+  CONSTRAINT employees_username_fkey FOREIGN KEY (username) REFERENCES profiles (username),
+  CONSTRAINT employees_role_id_fkey FOREIGN KEY (role_id) REFERENCES roles (role_id),
+  CONSTRAINT employees_employee_id_check CHECK (
+    (employee_id >= 10000) AND (employee_id <= 99999)
+  )
+) TABLESPACE pg_default;

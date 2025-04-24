@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { ShieldCheck, User, RefreshCcw, ArrowDownCircle, Filter, Edit2, Trash } from 'lucide-react';
+import { User, RefreshCcw, ArrowDownCircle, Filter, Edit2, Trash } from 'lucide-react';
 
 type UserData = {
   username: string;
   email: string;
-  is_admin: boolean;
   role: string;
 };
 
@@ -18,46 +17,39 @@ export default function UserTable({ onEditUser }: UserTableProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [sortBy, setSortBy] = useState<'username' | 'email'>('username');
-  const [filterBy, setFilterBy] = useState<'all' | 'admin' | 'user'>('all');
+  const [filterBy, setFilterBy] = useState<'all' | string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('username, email, is_admin, role');
-
-        if (error) throw error;
-        setUsers(data || []);
-      } catch (err: any) {
-        setError(err.message || 'Failed to fetch users.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUsers();
-  }, []);
-
-  const handleRefresh = async () => {
+  const fetchUsers = async () => {
     setLoading(true);
     setError('');
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('username, email, is_admin, role');
+        .select('username, email, roles(role_name)')
+        .returns<UserData[]>(); // Make sure to cast the shape appropriately
 
       if (error) throw error;
-      setUsers(data || []);
+
+      const formatted = data.map((user: any) => ({
+        username: user.username,
+        email: user.email,
+        role: user.roles?.role_name || 'Unknown',
+      }));
+
+      setUsers(formatted);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch users.');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const handleRefresh = fetchUsers;
 
   const handleDelete = async (username: string) => {
     const confirmDelete = window.confirm('Are you sure you want to delete this user?');
@@ -83,9 +75,8 @@ export default function UserTable({ onEditUser }: UserTableProps) {
 
   const filteredUsers = users
     .filter((user) => {
-      if (filterBy === 'admin') return user.is_admin;
-      if (filterBy === 'user') return !user.is_admin;
-      return true;
+      if (filterBy === 'all') return true;
+      return user.role.toLowerCase() === filterBy.toLowerCase();
     })
     .filter((user) =>
       user.username.toLowerCase().includes(searchQuery.toLowerCase())
@@ -102,7 +93,6 @@ export default function UserTable({ onEditUser }: UserTableProps) {
 
   return (
     <div className="space-y-6">
-      {/* Top bar */}
       <div className="bg-[#003366] text-white p-4 rounded-t-xl rounded-b-xl flex items-center shadow-lg w-full max-w-5xl mx-auto">
         <input
           type="text"
@@ -113,30 +103,17 @@ export default function UserTable({ onEditUser }: UserTableProps) {
         />
 
         <div className="flex gap-4 ml-4">
-          <button
-            onClick={handleRefresh}
-            className="p-3 w-12 h-12 rounded-lg bg-white text-[#003366]"
-          >
+          <button onClick={handleRefresh} className="p-3 w-12 h-12 rounded-lg bg-white text-[#003366]">
             <RefreshCcw className="w-6 h-6" />
           </button>
-          <button
-            onClick={() =>
-              setSortBy(sortBy === 'username' ? 'email' : 'username')
-            }
-            className="p-3 w-12 h-12 rounded-lg bg-white text-[#003366]"
-          >
+          <button onClick={() => setSortBy(sortBy === 'username' ? 'email' : 'username')} className="p-3 w-12 h-12 rounded-lg bg-white text-[#003366]">
             <ArrowDownCircle className="w-6 h-6" />
           </button>
           <button
-            onClick={() =>
-              setFilterBy(
-                filterBy === 'all'
-                  ? 'admin'
-                  : filterBy === 'admin'
-                  ? 'user'
-                  : 'all'
-              )
-            }
+            onClick={() => {
+              const next = filterBy === 'all' ? 'admin' : filterBy === 'admin' ? 'user' : 'all';
+              setFilterBy(next);
+            }}
             className="p-3 w-12 h-12 rounded-lg bg-white text-[#003366]"
           >
             <Filter className="w-6 h-6" />
@@ -144,7 +121,6 @@ export default function UserTable({ onEditUser }: UserTableProps) {
         </div>
       </div>
 
-      {/* User cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {sortedUsers.map((user) => (
           <div
@@ -152,11 +128,7 @@ export default function UserTable({ onEditUser }: UserTableProps) {
             className="flex items-center gap-6 border border-gray-200 rounded-2xl p-6 shadow-lg bg-white hover:shadow-xl transition duration-300 ease-in-out transform hover:scale-105"
           >
             <div className="w-16 h-16 flex items-center justify-center rounded-full bg-gray-100">
-              {user.is_admin ? (
-                <ShieldCheck className="w-10 h-10 text-blue-600" />
-              ) : (
-                <User className="w-10 h-10 text-gray-500" />
-              )}
+              <User className="w-10 h-10 text-gray-500" />
             </div>
 
             <div className="flex-1 max-w-full">
@@ -167,21 +139,15 @@ export default function UserTable({ onEditUser }: UserTableProps) {
                 {user.email}
               </div>
               <div className="text-sm mt-2 text-gray-500">
-                {user.is_admin ? 'Admin' : user.role}
+                {user.role}
               </div>
             </div>
 
             <div className="flex gap-3">
-              <button
-                className="p-2 rounded-lg bg-transparent text-gray-600"
-                onClick={() => onEditUser(user)}
-              >
+              <button className="p-2 rounded-lg bg-transparent text-gray-600" onClick={() => onEditUser(user)}>
                 <Edit2 className="w-5 h-5" />
               </button>
-              <button
-                className="p-2 rounded-lg bg-transparent text-red-600"
-                onClick={() => handleDelete(user.username)}
-              >
+              <button className="p-2 rounded-lg bg-transparent text-red-600" onClick={() => handleDelete(user.username)}>
                 <Trash className="w-5 h-5" />
               </button>
             </div>
