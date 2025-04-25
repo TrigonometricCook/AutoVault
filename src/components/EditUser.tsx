@@ -7,33 +7,49 @@ interface EditUserProps {
   user: {
     username: string;
     email: string;
-    role: string;
-    is_admin: boolean;
-  };
+    role_id: number;
+    full_name: string;
+  } | null;
   onCancel: () => void;
 }
 
 export default function EditUser({ user, onCancel }: EditUserProps) {
   const [formData, setFormData] = useState({
-    username: user.username,
-    email: user.email,
-    role: user.role,
-    isAdmin: user.is_admin,
-    newPassword: '', // 🔐 New password field
+    username: '',
+    email: '',
+    role_id: '',
+    full_name: '',
+    newPassword: '',
   });
 
+  const [roles, setRoles] = useState<{ role_id: number; role_name: string }[]>([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    setFormData({
-      username: user.username ?? '',
-      email: user.email ?? '',
-      role: user.role ?? '',
-      isAdmin: user.is_admin ?? false,
-      newPassword: '',
-    });
+    if (user) {
+      setFormData({
+        username: user.username,
+        email: user.email,
+        role_id: user.role_id ? user.role_id.toString() : '',
+        full_name: user.full_name,
+        newPassword: '',
+      });
+    }
   }, [user]);
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      // Fetch roles using RPC to execute raw SQL
+      const { data, error } = await supabase.rpc('fetch_roles'); // This calls a stored procedure for raw SQL query
+      if (error) {
+        console.error('Error fetching roles:', error);
+      } else {
+        setRoles(data);
+      }
+    };
+    fetchRoles();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -47,46 +63,56 @@ export default function EditUser({ user, onCancel }: EditUserProps) {
     setError('');
     setSuccess('');
 
-    const { username, email, role, isAdmin, newPassword } = formData;
+    const { username, email, full_name, role_id, newPassword } = formData;
 
-    if (!username || !email || !role) {
-      setError('All fields are required.');
+    if (!username || !email || !role_id || !full_name) {
+      setError('All fields except password are required.');
       return;
     }
 
-    // Update user data
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({
-        username,
-        email,
-        role,
-        is_admin: isAdmin,
-      })
-      .eq('username', user.username); // using username as primary key
-
-    if (updateError) {
-      setError(updateError.message);
-      return;
-    }
-
-    // Update password if provided
-    if (newPassword) {
-      const { error: passwordError } = await supabase
-        .from('profiles')
-        .update({
+    try {
+      // Update password in Supabase Auth (optional)
+      if (newPassword) {
+        const { error: authError } = await supabase.auth.updateUser({
           password: newPassword,
-        })
-        .eq('username', user.username);
+        });
+        if (authError) {
+          setError('Failed to update password.');
+          return;
+        }
+      }
 
-      if (passwordError) {
-        setError(passwordError.message);
+      // Update email using raw SQL via RPC
+      const { error: profileError } = await supabase.rpc('update_user_email', {
+        username: username,
+        email: email,
+      });
+
+      if (profileError) {
+        setError('Failed to update email.');
         return;
       }
-    }
 
-    setSuccess('User updated successfully!');
+      // Update role_id and full_name using raw SQL via RPC
+      const { error: employeeError } = await supabase.rpc('update_employee', {
+        username: username,
+        role_id: parseInt(role_id),
+        full_name: full_name,
+      });
+
+      if (employeeError) {
+        setError('Failed to update employee.');
+        return;
+      }
+
+      setSuccess('User updated successfully!');
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      setError('An unexpected error occurred.');
+    }
   };
+
+  if (!user) return null;
 
   return (
     <div className="bg-white flex justify-center items-start py-0">
@@ -97,10 +123,9 @@ export default function EditUser({ user, onCancel }: EditUserProps) {
           <input
             type="text"
             name="username"
-            placeholder="Username"
-            className="w-full bg-white border px-4 py-2 rounded-md"
+            disabled
+            className="w-full bg-gray-200 border px-4 py-2 rounded-md"
             value={formData.username}
-            onChange={handleChange}
           />
           <input
             type="email"
@@ -112,10 +137,10 @@ export default function EditUser({ user, onCancel }: EditUserProps) {
           />
           <input
             type="text"
-            name="role"
-            placeholder="Role"
+            name="full_name"
+            placeholder="Full Name"
             className="w-full bg-white border px-4 py-2 rounded-md"
-            value={formData.role}
+            value={formData.full_name}
             onChange={handleChange}
           />
           <input
@@ -126,16 +151,23 @@ export default function EditUser({ user, onCancel }: EditUserProps) {
             value={formData.newPassword}
             onChange={handleChange}
           />
-          <div className="flex items-center space-x-3">
-            <input
-              type="checkbox"
-              name="isAdmin"
-              id="isAdmin"
-              checked={formData.isAdmin}
-              onChange={handleChange}
-              className="accent-blue-600"
-            />
-            <label htmlFor="isAdmin" className="text-sm text-white">Admin Privileges</label>
+
+          <div className="space-y-2">
+            {roles.map((r) => (
+              <div key={r.role_id} className="flex items-center">
+                <input
+                  type="radio"
+                  name="role_id"
+                  value={r.role_id.toString()}
+                  id={`role-${r.role_id}`}
+                  checked={formData.role_id === r.role_id.toString()}
+                  onChange={handleChange}
+                />
+                <label htmlFor={`role-${r.role_id}`} className="text-white ml-2">
+                  {r.role_name}
+                </label>
+              </div>
+            ))}
           </div>
 
           {error && <p className="text-red-600 text-sm text-center">{error}</p>}

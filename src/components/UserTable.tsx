@@ -6,6 +6,7 @@ type UserData = {
   username: string;
   email: string;
   role: string;
+  full_name: string;
 };
 
 type UserTableProps = {
@@ -24,25 +25,62 @@ export default function UserTable({ onEditUser }: UserTableProps) {
     setLoading(true);
     setError('');
     try {
+      // Perform a raw SQL query to fetch users
       const { data, error } = await supabase
-        .from('employees')
-        .select(`
-          username,
-          profiles ( email ),
-          roles ( role_name )
-        `);
+        .rpc('execute_sql', {
+          query: `
+            SELECT 
+              employees.username,
+              employees.full_name, 
+              profiles.email,
+              roles.role_name
+            FROM 
+              employees
+            JOIN profiles ON employees.username = profiles.username
+            JOIN roles ON employees.role_id = roles.role_id;
+          `
+        });
 
       if (error) throw error;
 
+      // Format the data to match UserData
       const formatted = data.map((user: any) => ({
         username: user.username,
-        email: user.profiles?.email || '',
-        role: user.roles?.role_name || 'Unknown',
+        email: user.email,
+        full_name: user.full_name,
+        role: user.role_name || 'Unknown',  // Default to 'Unknown' if role is not found
       }));
 
-      setUsers(formatted);
+      setUsers(formatted);  // Update the state with the fetched data
     } catch (err: any) {
       setError(err.message || 'Failed to fetch users.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (username: string) => {
+    const confirmDelete = window.confirm('Are you sure you want to delete this user?');
+    if (!confirmDelete) return;
+
+    setLoading(true);
+    setError('');
+    try {
+      // Perform raw SQL query to delete user from both tables (employees and profiles)
+      const { error: employeeError } = await supabase
+        .rpc('execute_sql', {
+          query: `
+            DELETE FROM employees WHERE username = $1;
+            DELETE FROM profiles WHERE username = $1;
+          `,
+          parameters: [username],
+        });
+
+      if (employeeError) throw employeeError;
+
+      setUsers(users.filter(user => user.username !== username)); // Remove user from state
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete user.');
     } finally {
       setLoading(false);
     }
@@ -53,35 +91,6 @@ export default function UserTable({ onEditUser }: UserTableProps) {
   }, []);
 
   const handleRefresh = fetchUsers;
-
-  const handleDelete = async (username: string) => {
-    const confirmDelete = window.confirm('Are you sure you want to delete this user?');
-    if (!confirmDelete) return;
-
-    setLoading(true);
-    setError('');
-    try {
-      const { error: employeeError } = await supabase
-        .from('employees')
-        .delete()
-        .eq('username', username);
-
-      if (employeeError) throw employeeError;
-
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('username', username);
-
-      if (profileError) throw profileError;
-
-      setUsers(users.filter(user => user.username !== username));
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete user.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filteredUsers = users
     .filter((user) => {

@@ -15,10 +15,9 @@ export default function AddUser() {
     username: '',
     email: '',
     password: '',
+    confirmPassword: '', // New confirm password field
     role: '',
-    firstName: '',
-    lastName: '',
-    phoneNumber: '',
+    fullName: '', // Combined first and last name
   });
 
   const [roles, setRoles] = useState<{ role_id: number; role_name: string }[]>([]);
@@ -57,10 +56,17 @@ export default function AddUser() {
     setError('');
     setSuccess('');
 
-    const { username, email, password, role, firstName, lastName, phoneNumber } = formData;
+    const { username, email, password, confirmPassword, role, fullName } = formData;
 
-    if (!username || !email || !password || !role || !firstName || !lastName || !phoneNumber) {
+    // Validate that all fields are filled
+    if (!username || !email || !password || !confirmPassword || !role || !fullName) {
       setError('All fields are required.');
+      return;
+    }
+
+    // Validate that password and confirm password match
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
       return;
     }
 
@@ -93,12 +99,14 @@ export default function AddUser() {
 
     const roleId = parseInt(role);
     const employeeId = Math.floor(Math.random() * (99999 - 10000 + 1)) + 10000;
+    const userId = authData.user.id; // Get the user ID from the Auth data
 
     // Insert into profiles
     const { error: profileError } = await supabase.from('profiles').insert({
       username,
       password,
       email,
+      user_id: userId, // Include the user_id from Supabase Auth
     });
 
     if (profileError) {
@@ -106,12 +114,10 @@ export default function AddUser() {
       return;
     }
 
-    // Insert into employees
+    // Insert into employees (with full_name instead of first_name and last_name)
     const { error: employeeError } = await supabase.from('employees').insert({
       employee_id: employeeId,
-      first_name: firstName,
-      last_name: lastName,
-      phone: phoneNumber,
+      full_name: fullName, // Use fullName instead of first and last name
       role_id: roleId,
       username,
     });
@@ -126,10 +132,9 @@ export default function AddUser() {
       username: '',
       email: '',
       password: '',
+      confirmPassword: '', // Reset confirmPassword
       role: '',
-      firstName: '',
-      lastName: '',
-      phoneNumber: '',
+      fullName: '', // Reset fullName
     });
 
     const { data: updatedSessionData } = await supabase.auth.getSession();
@@ -167,27 +172,19 @@ export default function AddUser() {
             onChange={handleChange}
           />
           <input
-            type="text"
-            name="firstName"
-            placeholder="First Name"
+            type="password"
+            name="confirmPassword"
+            placeholder="Confirm Password"
             className="w-full bg-white border px-4 py-2 rounded-md"
-            value={formData.firstName}
+            value={formData.confirmPassword}
             onChange={handleChange}
           />
           <input
             type="text"
-            name="lastName"
-            placeholder="Last Name"
+            name="fullName"
+            placeholder="Full Name"
             className="w-full bg-white border px-4 py-2 rounded-md"
-            value={formData.lastName}
-            onChange={handleChange}
-          />
-          <input
-            type="text"
-            name="phoneNumber"
-            placeholder="Phone Number"
-            className="w-full bg-white border px-4 py-2 rounded-md"
-            value={formData.phoneNumber}
+            value={formData.fullName}
             onChange={handleChange}
           />
 
