@@ -1,48 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import { useRouter } from 'next/navigation';
-
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { useState } from 'react';
+import { handleAddUser } from '@/lib/adduser';
 
 export default function AddUser() {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     password: '',
-    confirmPassword: '', // New confirm password field
+    confirmPassword: '',
     role: '',
-    fullName: '', // Combined first and last name
+    fullName: '',
   });
 
-  const [roles, setRoles] = useState<{ role_id: number; role_name: string }[]>([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [session, setSession] = useState<any>(null);
-  const router = useRouter();
 
-  // Fetch roles and session
-  useEffect(() => {
-    const fetchRoles = async () => {
-      const { data, error } = await supabase.from('roles').select('role_id, role_name');
-      if (!error && data) {
-        setRoles(data);
-      }
-    };
-
-    const getSession = async () => {
-      const { data: sessionData } = await supabase.auth.getSession();
-      setSession(sessionData?.session || null);
-    };
-
-    fetchRoles();
-    getSession();
-  }, [router]);
+  const roles = ['Admin', 'Manager', 'Designer'];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -52,93 +26,33 @@ export default function AddUser() {
     }));
   };
 
+  const handleRoleSelect = (role: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      role,
+    }));
+  };
+
   const handleSubmit = async () => {
     setError('');
     setSuccess('');
 
-    const { username, email, password, confirmPassword, role, fullName } = formData;
+    console.log('Submitting user data:', formData);
+    const result = await handleAddUser(formData);
 
-    // Validate that all fields are filled
-    if (!username || !email || !password || !confirmPassword || !role || !fullName) {
-      setError('All fields are required.');
-      return;
+    if (result.error) {
+      setError(result.error);
+    } else {
+      setSuccess(result.success);
+      setFormData({
+        username: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        role: '',
+        fullName: '',
+      });
     }
-
-    // Validate that password and confirm password match
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.');
-      return;
-    }
-
-    // Check if username already exists
-    const { data: existing, error: checkError } = await supabase
-      .from('profiles')
-      .select('username')
-      .eq('username', username);
-
-    if (checkError) {
-      setError('Error checking username.');
-      return;
-    }
-
-    if (existing && existing.length > 0) {
-      setError('Username already taken.');
-      return;
-    }
-
-    // Sign up user in Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (authError || !authData.user) {
-      setError(authError?.message || 'Failed to create user.');
-      return;
-    }
-
-    const roleId = parseInt(role);
-    const employeeId = Math.floor(Math.random() * (99999 - 10000 + 1)) + 10000;
-    const userId = authData.user.id; // Get the user ID from the Auth data
-
-    // Insert into profiles
-    const { error: profileError } = await supabase.from('profiles').insert({
-      username,
-      password,
-      email,
-      user_id: userId, // Include the user_id from Supabase Auth
-    });
-
-    if (profileError) {
-      setError('User created, but failed to save profile.');
-      return;
-    }
-
-    // Insert into employees (with full_name instead of first_name and last_name)
-    const { error: employeeError } = await supabase.from('employees').insert({
-      employee_id: employeeId,
-      full_name: fullName, // Use fullName instead of first and last name
-      role_id: roleId,
-      username,
-    });
-
-    if (employeeError) {
-      setError('User created, but failed to save employee details.');
-      return;
-    }
-
-    setSuccess('User added successfully!');
-    setFormData({
-      username: '',
-      email: '',
-      password: '',
-      confirmPassword: '', // Reset confirmPassword
-      role: '',
-      fullName: '', // Reset fullName
-    });
-
-    const { data: updatedSessionData } = await supabase.auth.getSession();
-    setSession(updatedSessionData?.session);
   };
 
   return (
@@ -153,6 +67,14 @@ export default function AddUser() {
             placeholder="Username"
             className="w-full bg-white border px-4 py-2 rounded-md"
             value={formData.username}
+            onChange={handleChange}
+          />
+          <input
+            type="text"
+            name="fullName"
+            placeholder="Full Name"
+            className="w-full bg-white border px-4 py-2 rounded-md"
+            value={formData.fullName}
             onChange={handleChange}
           />
           <input
@@ -179,29 +101,21 @@ export default function AddUser() {
             value={formData.confirmPassword}
             onChange={handleChange}
           />
-          <input
-            type="text"
-            name="fullName"
-            placeholder="Full Name"
-            className="w-full bg-white border px-4 py-2 rounded-md"
-            value={formData.fullName}
-            onChange={handleChange}
-          />
 
-          {/* Dynamic role selection */}
-          <div className="space-y-2">
-            {roles.map((r) => (
-              <div key={r.role_id} className="flex items-center">
-                <input
-                  type="radio"
-                  name="role"
-                  value={r.role_id}
-                  id={`role-${r.role_id}`}
-                  checked={formData.role === r.role_id.toString()}
-                  onChange={handleChange}
-                />
-                <label htmlFor={`role-${r.role_id}`} className="text-white ml-2">{r.role_name}</label>
-              </div>
+          <div className="flex w-full gap-2">
+            {roles.map((role) => (
+              <button
+                key={role}
+                type="button"
+                onClick={() => handleRoleSelect(role)}
+                className={`flex-1 px-4 py-2 rounded-md border text-sm font-medium transition ${
+                  formData.role === role
+                    ? 'bg-white text-[#003366] border-white'
+                    : 'bg-[#003366] text-white border-white hover:bg-white hover:text-[#003366]'
+                }`}
+              >
+                {role}
+              </button>
             ))}
           </div>
 
@@ -210,7 +124,7 @@ export default function AddUser() {
 
           <button
             onClick={handleSubmit}
-            className="w-full bg-white text-[#003366] py-2 rounded-md hover:bg-gray-200 transition duration-300"
+            className="w-full bg-yellow-400 text-[#003366] py-2 rounded-md font-semibold hover:bg-yellow-300 transition duration-300"
           >
             Add User
           </button>

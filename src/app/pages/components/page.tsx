@@ -1,15 +1,9 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { supabase } from '@/lib/supabase';
 import { RefreshCcw } from 'lucide-react';
-
-type ComponentData = {
-  part_number: number;
-  version: number;
-  name: string;
-  file_path: string;
-};
+import { fetchLatestComponents, ComponentWithLatestVersion } from '@/lib/fetchcomponents';
+import { supabase } from '@/lib/supabase';
 
 function getPublicUrl(file_path: string) {
   return supabase.storage.from('drawings').getPublicUrl(file_path).data.publicUrl;
@@ -19,6 +13,8 @@ function PdfCard({ fileUrl, title }: { fileUrl: string; title: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
+    let renderTask: any = null;
+
     const renderPDF = async () => {
       try {
         const pdfjsLib = await import('pdfjs-dist/build/pdf');
@@ -40,21 +36,26 @@ function PdfCard({ fileUrl, title }: { fileUrl: string; title: string }) {
         canvas.height = viewport.height;
         canvas.width = viewport.width;
 
-        await page.render({ canvasContext: context, viewport }).promise;
-      } catch (err) {
-        console.error('Failed to render PDF:', err);
+        renderTask = page.render({ canvasContext: context, viewport });
+        await renderTask.promise;
+      } catch (err: any) {
+        if (err?.name !== 'RenderingCancelledException') {
+          console.error('Failed to render PDF:', err);
+        }
       }
     };
 
     renderPDF();
 
-    // Cleanup: clear canvas when component unmounts or fileUrl changes
     return () => {
+      if (renderTask) {
+        renderTask.cancel();
+      }
       const canvas = canvasRef.current;
       if (canvas) {
         const context = canvas.getContext('2d');
         if (context) {
-          context.clearRect(0, 0, canvas.width, canvas.height); // Clears the canvas before next render
+          context.clearRect(0, 0, canvas.width, canvas.height);
         }
       }
     };
@@ -69,25 +70,23 @@ function PdfCard({ fileUrl, title }: { fileUrl: string; title: string }) {
 }
 
 export default function PdfPreview() {
-  const [components, setComponents] = useState<ComponentData[]>([]);
+  const [components, setComponents] = useState<ComponentWithLatestVersion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const fetchComponents = async () => {
     setLoading(true);
     setError('');
-    try {
-      const { data, error } = await supabase
-        .from('components')
-        .select('part_number, version, name, file_path');
+    const { data, error } = await fetchLatestComponents();
 
-      if (error) throw error;
-      setComponents(data || []);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch components.');
-    } finally {
+    if (error) {
+      setError(error);
       setLoading(false);
+      return;
     }
+
+    setComponents(data || []);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -109,10 +108,10 @@ export default function PdfPreview() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 px-4">
         {loading && <p className="col-span-full text-center text-gray-600">Loading PDFs...</p>}
         {error && <p className="col-span-full text-center text-red-500">{error}</p>}
-        {components.map(({ part_number, version, name, file_path }) => {
+        {components.map(({ part_number, part_name, version_number, file_path }) => {
           const fileUrl = getPublicUrl(file_path);
-          const title = `${name} v${version} (${part_number})`;
-          return <PdfCard key={`${part_number}-${version}`} fileUrl={fileUrl} title={title} />;
+          const title = `${part_name || part_number} v${version_number}`;
+          return <PdfCard key={`${part_number}-${version_number}`} fileUrl={fileUrl} title={title} />;
         })}
       </div>
     </div>

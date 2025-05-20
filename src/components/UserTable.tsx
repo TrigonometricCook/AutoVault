@@ -1,96 +1,26 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { User, RefreshCcw, ArrowDownCircle, Filter, Edit2, Trash } from 'lucide-react';
+'use client';
 
-type UserData = {
-  username: string;
-  email: string;
-  role: string;
-  full_name: string;
-};
+import { useState } from 'react';
+import { useUsers, UserData } from '@/lib/fetchusers';
+import { User, RefreshCcw, ArrowDownCircle, Filter, Edit2, Trash } from 'lucide-react';
 
 type UserTableProps = {
   onEditUser: (user: UserData) => void;
 };
 
 export default function UserTable({ onEditUser }: UserTableProps) {
-  const [users, setUsers] = useState<UserData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { users, loading, error, fetchUsers, deleteUser } = useUsers();
   const [sortBy, setSortBy] = useState<'username' | 'email'>('username');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filterBy, setFilterBy] = useState<'all' | string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  const fetchUsers = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      // Perform a raw SQL query to fetch users
-      const { data, error } = await supabase
-        .rpc('execute_sql', {
-          query: `
-            SELECT 
-              employees.username,
-              employees.full_name, 
-              profiles.email,
-              roles.role_name
-            FROM 
-              employees
-            JOIN profiles ON employees.username = profiles.username
-            JOIN roles ON employees.role_id = roles.role_id;
-          `
-        });
-
-      if (error) throw error;
-
-      // Format the data to match UserData
-      const formatted = data.map((user: any) => ({
-        username: user.username,
-        email: user.email,
-        full_name: user.full_name,
-        role: user.role_name || 'Unknown',  // Default to 'Unknown' if role is not found
-      }));
-
-      setUsers(formatted);  // Update the state with the fetched data
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch users.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleDelete = async (username: string) => {
     const confirmDelete = window.confirm('Are you sure you want to delete this user?');
-    if (!confirmDelete) return;
-
-    setLoading(true);
-    setError('');
-    try {
-      // Perform raw SQL query to delete user from both tables (employees and profiles)
-      const { error: employeeError } = await supabase
-        .rpc('execute_sql', {
-          query: `
-            DELETE FROM employees WHERE username = $1;
-            DELETE FROM profiles WHERE username = $1;
-          `,
-          parameters: [username],
-        });
-
-      if (employeeError) throw employeeError;
-
-      setUsers(users.filter(user => user.username !== username)); // Remove user from state
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete user.');
-    } finally {
-      setLoading(false);
+    if (confirmDelete) {
+      await deleteUser(username);
     }
   };
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const handleRefresh = fetchUsers;
 
   const filteredUsers = users
     .filter((user) => {
@@ -102,10 +32,22 @@ export default function UserTable({ onEditUser }: UserTableProps) {
     );
 
   const sortedUsers = filteredUsers.sort((a, b) => {
-    return sortBy === 'username'
-      ? a.username.localeCompare(b.username)
-      : a.email.localeCompare(b.email);
+    const fieldA = sortBy === 'username' ? a.username : a.email;
+    const fieldB = sortBy === 'username' ? b.username : b.email;
+
+    const comparison = fieldA.localeCompare(fieldB);
+    return sortDirection === 'asc' ? comparison : -comparison;
   });
+
+  const toggleSort = () => {
+    if (sortBy === 'username') {
+      setSortBy('email');
+      setSortDirection('asc'); // reset direction
+    } else {
+      setSortBy('username');
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    }
+  };
 
   if (loading) return <p className="text-center text-xl font-semibold">Loading users...</p>;
   if (error) return <p className="text-center text-red-500">{error}</p>;
@@ -122,18 +64,27 @@ export default function UserTable({ onEditUser }: UserTableProps) {
         />
 
         <div className="flex gap-4 ml-4">
-          <button onClick={handleRefresh} className="p-3 w-12 h-12 rounded-lg bg-white text-[#003366]">
+          <button onClick={fetchUsers} className="p-3 w-12 h-12 rounded-lg bg-white text-[#003366]">
             <RefreshCcw className="w-6 h-6" />
           </button>
-          <button onClick={() => setSortBy(sortBy === 'username' ? 'email' : 'username')} className="p-3 w-12 h-12 rounded-lg bg-white text-[#003366]">
-            <ArrowDownCircle className="w-6 h-6" />
+          <button
+            onClick={toggleSort}
+            className="p-3 w-12 h-12 rounded-lg bg-white text-[#003366]"
+            title={`Sort by ${sortBy === 'username' ? 'email' : 'username'}`}
+          >
+            <ArrowDownCircle className="w-6 h-6 transform transition-transform duration-300"
+              style={{
+                transform: sortDirection === 'asc' ? 'rotate(0deg)' : 'rotate(180deg)',
+              }}
+            />
           </button>
           <button
             onClick={() => {
-              const next = filterBy === 'all' ? 'admin' : filterBy === 'admin' ? 'user' : 'all';
+              const next = filterBy === 'all' ? 'admin' : filterBy === 'admin' ? 'staff' : 'all';
               setFilterBy(next);
             }}
             className="p-3 w-12 h-12 rounded-lg bg-white text-[#003366]"
+            title={`Filter: ${filterBy}`}
           >
             <Filter className="w-6 h-6" />
           </button>
@@ -163,10 +114,19 @@ export default function UserTable({ onEditUser }: UserTableProps) {
             </div>
 
             <div className="flex gap-3">
-              <button className="p-2 rounded-lg bg-transparent text-gray-600" onClick={() => onEditUser(user)}>
+              <button
+                className="p-2 rounded-lg bg-transparent text-gray-600"
+                onClick={() => {
+                  console.log('Editing user:', user);
+                  onEditUser(user);
+                }}
+              >
                 <Edit2 className="w-5 h-5" />
               </button>
-              <button className="p-2 rounded-lg bg-transparent text-red-600" onClick={() => handleDelete(user.username)}>
+              <button
+                className="p-2 rounded-lg bg-transparent text-red-600"
+                onClick={() => handleDelete(user.username)}
+              >
                 <Trash className="w-5 h-5" />
               </button>
             </div>
