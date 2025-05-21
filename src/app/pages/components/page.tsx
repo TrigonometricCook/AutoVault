@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { RefreshCcw } from 'lucide-react';
+import { RefreshCcw, Plus, Edit, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { fetchLatestComponents, ComponentWithLatestVersion } from '@/lib/fetchcomponents';
 import { supabase } from '@/lib/supabase';
 
@@ -9,12 +10,17 @@ function getPublicUrl(file_path: string) {
   return supabase.storage.from('drawings').getPublicUrl(file_path).data.publicUrl;
 }
 
-function PdfCard({ fileUrl, title }: { fileUrl: string; title: string }) {
+function PdfCard({
+  fileUrl,
+  component,
+}: {
+  fileUrl: string;
+  component: ComponentWithLatestVersion;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const renderTaskRef = useRef<any>(null);
 
   useEffect(() => {
-    let renderTask: any = null;
-
     const renderPDF = async () => {
       try {
         const pdfjsLib = await import('pdfjs-dist/build/pdf');
@@ -36,8 +42,12 @@ function PdfCard({ fileUrl, title }: { fileUrl: string; title: string }) {
         canvas.height = viewport.height;
         canvas.width = viewport.width;
 
-        renderTask = page.render({ canvasContext: context, viewport });
-        await renderTask.promise;
+        if (renderTaskRef.current) {
+          await renderTaskRef.current.cancel();
+        }
+
+        renderTaskRef.current = page.render({ canvasContext: context, viewport });
+        await renderTaskRef.current.promise;
       } catch (err: any) {
         if (err?.name !== 'RenderingCancelledException') {
           console.error('Failed to render PDF:', err);
@@ -48,8 +58,8 @@ function PdfCard({ fileUrl, title }: { fileUrl: string; title: string }) {
     renderPDF();
 
     return () => {
-      if (renderTask) {
-        renderTask.cancel();
+      if (renderTaskRef.current) {
+        renderTaskRef.current.cancel();
       }
       const canvas = canvasRef.current;
       if (canvas) {
@@ -62,17 +72,42 @@ function PdfCard({ fileUrl, title }: { fileUrl: string; title: string }) {
   }, [fileUrl]);
 
   return (
-    <div className="flex flex-col p-4 border border-gray-200 rounded-2xl shadow-md bg-white hover:shadow-lg transition duration-200 ease-in-out transform hover:scale-[1.02]">
-      <h2 className="text-lg font-semibold text-center mb-3 text-gray-800">{title}</h2>
+    <div className="flex flex-col p-4 border border-gray-200 rounded-2xl shadow-md bg-white text-black hover:shadow-lg transition duration-200 ease-in-out transform hover:scale-[1.02]">
+      <div className="flex justify-between items-center mb-2">
+        <h2 className="text-lg font-semibold">{component.part_name || component.part_number}</h2>
+        <div className="flex gap-2">
+          <button
+            className="text-blue-600 hover:text-blue-800"
+            onClick={() => console.log('Edit', component)}
+          >
+            <Edit className="w-4 h-4" />
+          </button>
+          <button
+            className="text-red-600 hover:text-red-800"
+            onClick={() => console.log('Delete', component)}
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
       <canvas ref={canvasRef} style={{ width: '100%', height: 'auto' }} />
+      <div className="mt-3 space-y-1 text-sm text-gray-700">
+        <p><strong>Part Number:</strong> {component.part_number}</p>
+        <p><strong>Version:</strong> {component.version_number}</p>
+        <p><strong>Status:</strong> {component.status || 'N/A'}</p>
+        <p><strong>Description:</strong> {component.description || 'No description provided.'}</p>
+      </div>
     </div>
   );
 }
 
 export default function PdfPreview() {
   const [components, setComponents] = useState<ComponentWithLatestVersion[]>([]);
+  const [filteredComponents, setFilteredComponents] = useState<ComponentWithLatestVersion[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const router = useRouter();
 
   const fetchComponents = async () => {
     setLoading(true);
@@ -86,6 +121,7 @@ export default function PdfPreview() {
     }
 
     setComponents(data || []);
+    setFilteredComponents(data || []);
     setLoading(false);
   };
 
@@ -93,25 +129,58 @@ export default function PdfPreview() {
     fetchComponents();
   }, []);
 
+  useEffect(() => {
+    const term = searchTerm.toLowerCase();
+    const filtered = components.filter(({ part_number, part_name }) =>
+      part_number.toLowerCase().includes(term) || part_name?.toLowerCase().includes(term)
+    );
+    setFilteredComponents(filtered);
+  }, [searchTerm, components]);
+
   return (
-    <div className="w-full max-w-6xl mx-auto mt-8 space-y-8">
-      <div className="bg-[#003366] text-white p-4 rounded-xl flex items-center justify-between shadow-lg">
-        <h1 className="text-xl font-bold">PDF Components</h1>
-        <button
-          onClick={fetchComponents}
-          className="p-3 w-12 h-12 rounded-lg bg-white text-[#003366]"
-        >
-          <RefreshCcw className="w-6 h-6" />
-        </button>
+    <div className="w-full max-w-6xl mx-auto mt-8 space-y-8 px-4">
+      {/* Header: Title, Search, Refresh, Add */}
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
+        <h1 className="text-2xl font-bold text-[#003366]">Components</h1>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by name or number..."
+            className="p-2 border border-gray-300 rounded-lg w-full sm:w-64"
+          />
+          <button
+            onClick={fetchComponents}
+            className="p-2 rounded-lg bg-[#003366] text-white hover:bg-[#002244] transition"
+          >
+            <RefreshCcw className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => router.push('/pages/components/add')}
+            className="p-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 px-4">
+      {/* Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading && <p className="col-span-full text-center text-gray-600">Loading PDFs...</p>}
         {error && <p className="col-span-full text-center text-red-500">{error}</p>}
-        {components.map(({ part_number, part_name, version_number, file_path }) => {
-          const fileUrl = getPublicUrl(file_path);
-          const title = `${part_name || part_number} v${version_number}`;
-          return <PdfCard key={`${part_number}-${version_number}`} fileUrl={fileUrl} title={title} />;
+        {!loading && filteredComponents.length === 0 && (
+          <p className="col-span-full text-center text-gray-500">No components found.</p>
+        )}
+        {filteredComponents.map((component) => {
+          const fileUrl = getPublicUrl(component.file_path);
+          return (
+            <PdfCard
+              key={`${component.part_number}-${component.version_number}`}
+              fileUrl={fileUrl}
+              component={component}
+            />
+          );
         })}
       </div>
     </div>
