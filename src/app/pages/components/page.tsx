@@ -19,6 +19,7 @@ function PdfCard({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const renderTaskRef = useRef<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const renderPDF = async () => {
@@ -30,8 +31,15 @@ function PdfCard({
         const pdf = await loadingTask.promise;
         const page = await pdf.getPage(1);
 
-        const scale = 1.2;
-        const viewport = page.getViewport({ scale });
+        const viewport = page.getViewport({ scale: 1 });
+        const maxWidth = 300;
+        const maxHeight = 350;
+
+        const scaleX = maxWidth / viewport.width;
+        const scaleY = maxHeight / viewport.height;
+        const scale = Math.min(scaleX, scaleY); // maintain full top-left view
+
+        const croppedViewport = page.getViewport({ scale });
 
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -39,15 +47,20 @@ function PdfCard({
         const context = canvas.getContext('2d');
         if (!context) return;
 
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
+        canvas.width = croppedViewport.width;
+        canvas.height = croppedViewport.height;
 
         if (renderTaskRef.current) {
           await renderTaskRef.current.cancel();
         }
 
-        renderTaskRef.current = page.render({ canvasContext: context, viewport });
+        renderTaskRef.current = page.render({
+          canvasContext: context,
+          viewport: croppedViewport,
+        });
+
         await renderTaskRef.current.promise;
+        setLoading(false);
       } catch (err: any) {
         if (err?.name !== 'RenderingCancelledException') {
           console.error('Failed to render PDF:', err);
@@ -72,25 +85,42 @@ function PdfCard({
   }, [fileUrl]);
 
   return (
-    <div className="flex flex-col p-4 border border-gray-200 rounded-2xl shadow-md bg-white text-black hover:shadow-lg transition duration-200 ease-in-out transform hover:scale-[1.02]">
+    <div
+      className="flex flex-col p-4 border border-gray-200 rounded-2xl shadow-md bg-white text-black hover:shadow-lg transition duration-200 ease-in-out transform hover:scale-[1.02] cursor-pointer"
+    >
       <div className="flex justify-between items-center mb-2">
         <h2 className="text-lg font-semibold">{component.part_name || component.part_number}</h2>
         <div className="flex gap-2">
           <button
             className="text-blue-600 hover:text-blue-800"
-            onClick={() => console.log('Edit', component)}
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('Edit', component);
+            }}
           >
             <Edit className="w-4 h-4" />
           </button>
           <button
             className="text-red-600 hover:text-red-800"
-            onClick={() => console.log('Delete', component)}
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('Delete', component);
+            }}
           >
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </div>
-      <canvas ref={canvasRef} style={{ width: '100%', height: 'auto' }} />
+
+      <div className="relative">
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center z-10 bg-white bg-opacity-70 rounded">
+            <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+          </div>
+        )}
+        <canvas ref={canvasRef} className="w-full h-auto" />
+      </div>
+
       <div className="mt-3 space-y-1 text-sm text-gray-700">
         <p><strong>Part Number:</strong> {component.part_number}</p>
         <p><strong>Version:</strong> {component.version_number}</p>
