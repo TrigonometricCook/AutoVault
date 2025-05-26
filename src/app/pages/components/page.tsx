@@ -20,6 +20,7 @@ function PdfCard({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const renderTaskRef = useRef<any>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     const renderPDF = async () => {
@@ -35,10 +36,7 @@ function PdfCard({
         const maxWidth = 300;
         const maxHeight = 350;
 
-        const scaleX = maxWidth / viewport.width;
-        const scaleY = maxHeight / viewport.height;
-        const scale = Math.min(scaleX, scaleY); // maintain full top-left view
-
+        const scale = Math.min(maxWidth / viewport.width, maxHeight / viewport.height);
         const croppedViewport = page.getViewport({ scale });
 
         const canvas = canvasRef.current;
@@ -84,9 +82,14 @@ function PdfCard({
     };
   }, [fileUrl]);
 
+  const navigateToEdit = () => {
+    router.push(`/pages/components/edit?part_number=${component.part_number}&version_number=${component.version_number}`);
+  };
+
   return (
     <div
       className="flex flex-col p-4 border border-gray-200 rounded-2xl shadow-md bg-white text-black hover:shadow-lg transition duration-200 ease-in-out transform hover:scale-[1.02] cursor-pointer"
+      onClick={navigateToEdit}
     >
       <div className="flex justify-between items-center mb-2">
         <h2 className="text-lg font-semibold">{component.part_name || component.part_number}</h2>
@@ -95,7 +98,7 @@ function PdfCard({
             className="text-blue-600 hover:text-blue-800"
             onClick={(e) => {
               e.stopPropagation();
-              console.log('Edit', component);
+              navigateToEdit();
             }}
           >
             <Edit className="w-4 h-4" />
@@ -169,7 +172,6 @@ export default function PdfPreview() {
 
   return (
     <div className="w-full max-w-6xl mx-auto mt-8 space-y-8 px-4">
-      {/* Header: Title, Search, Refresh, Add */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
         <h1 className="text-2xl font-bold text-[#003366]">Components</h1>
         <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -195,7 +197,6 @@ export default function PdfPreview() {
         </div>
       </div>
 
-      {/* Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading && <p className="col-span-full text-center text-gray-600">Loading PDFs...</p>}
         {error && <p className="col-span-full text-center text-red-500">{error}</p>}
