@@ -15,6 +15,9 @@ export default function AddComponentPage() {
     cost: '',
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const renderTaskRef = useRef<any>(null);
   const router = useRouter();
@@ -24,7 +27,18 @@ export default function AddComponentPage() {
   };
 
   const handleSubmit = async () => {
-    await handleComponentSubmit({ ...form, file });
+    setIsSubmitting(true);
+    setSaveMessage('');
+
+    try {
+      await handleComponentSubmit({ ...form, file });
+      setSaveMessage('Component saved successfully!');
+    } catch (error) {
+      console.error(error);
+      setSaveMessage('Failed to save component.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   useEffect(() => {
@@ -96,7 +110,10 @@ export default function AddComponentPage() {
           style={{ width: '500px', height: '400px' }}
         />
         <div>
-          <label htmlFor="file-upload" className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 inline-block">
+          <label
+            htmlFor="file-upload"
+            className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 inline-block"
+          >
             {file ? 'Change File' : 'Choose PDF'}
           </label>
           <input
@@ -184,22 +201,33 @@ export default function AddComponentPage() {
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-4 mt-4">
+          {/* Action Buttons + Save Message */}
+          <div className="flex gap-4 mt-4 items-center">
             <button
               type="button"
               onClick={handleSubmit}
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+              disabled={isSubmitting}
             >
-              Submit
+              {isSubmitting ? 'Saving...' : 'Submit'}
             </button>
             <button
               type="button"
               onClick={() => router.back()}
               className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+              disabled={isSubmitting}
             >
               Cancel
             </button>
+            {saveMessage && (
+              <p
+                className={`text-sm ${
+                  saveMessage.includes('success') ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                {saveMessage}
+              </p>
+            )}
           </div>
         </form>
       </div>

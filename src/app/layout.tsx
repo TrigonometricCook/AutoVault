@@ -1,7 +1,7 @@
 'use client'
 
 import "./globals.css";
-import SessionRedirector from '@/components/SessionRedirector';
+//import SessionRedirector from '@/components/SessionRedirector';
 import { usePathname } from 'next/navigation';
 import Navbar from "../components/Navbar";
 import AdminNavbar from "@/components/AdminNavbar";
@@ -13,7 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return (
       <html lang="en">
         <body className="antialiased bg-white text-black">
-          <main className="p-4">
+          <main className="p-0">
             {children}
           </main>
         </body>
@@ -27,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="antialiased bg-white text-black">
         {isAdminPage ? <AdminNavbar /> : <Navbar />}
-        <main className="p-4">
+        <main className="p-0">
           {children}
         </main>
       </body>

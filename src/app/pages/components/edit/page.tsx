@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Edit, Trash2, PlusCircle, XCircle, Upload, CheckCircle } from 'lucide-react';
+import { Edit, Trash2, PlusCircle, XCircle } from 'lucide-react';
+import EditableVersionCard from '@/components/NewVersion';
 
 function getPublicUrl(file_path: string) {
   return supabase.storage.from('drawings').getPublicUrl(file_path).data.publicUrl;
@@ -15,8 +16,10 @@ type Version = {
   created_at: string;
   created_by: string;
   cost: number | null;
-  description?: string;
-  status?: string;
+  components?: {
+    description?: string;
+    status?: string;
+  };
 };
 
 export default function EditComponentPage() {
@@ -39,7 +42,10 @@ export default function EditComponentPage() {
     const fetchVersions = async () => {
       const { data, error } = await supabase
         .from('component_versions')
-        .select('*')
+        .select(`
+          *,
+          components (description, status)
+        `)
         .eq('part_number', partNumber)
         .order('version_number', { ascending: false });
 
@@ -49,6 +55,7 @@ export default function EditComponentPage() {
         return;
       }
 
+      console.log('Fetched data:', data); // 🔥 LOG: check all data!
       setVersions(data || []);
       setLoading(false);
     };
@@ -57,8 +64,15 @@ export default function EditComponentPage() {
   }, [partNumber]);
 
   const handleCancel = () => router.back();
-
   const latest = versions[0];
+
+  if (loading) {
+    return <div className="p-6">Loading...</div>;
+  }
+
+  if (error) {
+    return <div className="p-6 text-red-500">Error: {error}</div>;
+  }
 
   return (
     <div className="h-screen overflow-y-auto p-6 bg-gray-50">
@@ -83,8 +97,9 @@ export default function EditComponentPage() {
           </div>
         </div>
 
-        {adding && latest && (
+        {adding && latest && partNumber && (
           <EditableVersionCard
+            part_number={partNumber}
             version={latest}
             isNew
             onCancel={() => setAdding(false)}
@@ -107,132 +122,36 @@ function VersionCard({ version }: { version: Version }) {
   }, [version]);
 
   return (
-    <div className="flex flex-col p-4 border rounded-xl bg-white shadow space-y-2">
-      <div className="flex justify-between items-center">
-        <h3 className="font-semibold text-lg text-[#003366]">Version {version.version_number}</h3>
-        <div className="flex gap-2">
-          <button className="text-blue-600 hover:text-blue-800 flex items-center gap-1">
-            <Edit className="w-4 h-4" /> Edit
-          </button>
-          <button className="text-red-600 hover:text-red-800 flex items-center gap-1">
-            <Trash2 className="w-4 h-4" /> Delete
-          </button>
+    <div className="flex flex-col md:flex-row border rounded-xl bg-white shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden">
+      <canvas
+        ref={canvasRef}
+        className="w-full md:w-[200px] h-[150px] md:h-auto object-cover"
+      />
+      <div className="flex-1 flex flex-col justify-between p-4">
+        <div>
+          <h3 className="text-lg font-semibold text-[#003366] mb-2">Version {version.version_number}</h3>
+          <p className="text-sm text-gray-700 mb-2 break-all">
+            {version.components?.description ?? 'No description available.'}
+          </p>
         </div>
-      </div>
-      <div className="flex gap-6">
-        <canvas ref={canvasRef} className="w-[150px] border rounded" />
-        <div className="space-y-1 text-sm text-gray-700">
-          <p><strong>File Path:</strong> {version.file_path}</p>
-          <p><strong>Created At:</strong> {new Date(version.created_at).toLocaleString()}</p>
-          <p><strong>Created By:</strong> {version.created_by}</p>
-          <p><strong>Cost:</strong> {version.cost !== null ? `$${version.cost.toFixed(2)}` : 'N/A'}</p>
-          <p><strong>Status:</strong> {version.status ?? 'N/A'}</p>
-          <p><strong>Description:</strong> {version.description ?? 'N/A'}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function EditableVersionCard({
-  version,
-  isNew,
-  onCancel,
-}: {
-  version: Version;
-  isNew?: boolean;
-  onCancel: () => void;
-}) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  const [formData, setFormData] = useState({
-    version_number: '',
-    file: null as File | null,
-    cost: version.cost ?? '',
-    created_by: version.created_by ?? '',
-    status: version.status ?? '',
-    description: version.description ?? '',
-  });
-
-  useEffect(() => {
-    renderPDF(version.file_path, canvasRef);
-  }, [version]);
-
-  return (
-    <div className="flex flex-col p-4 border-2 border-dashed border-blue-400 rounded-xl bg-blue-50 shadow space-y-2">
-      <div className="flex justify-between items-center">
-        <h3 className="font-semibold text-lg text-blue-800">Add New Version</h3>
-        <button
-          onClick={onCancel}
-          className="text-sm text-gray-600 hover:text-gray-800 flex items-center gap-1"
-        >
-          <XCircle className="w-4 h-4" /> Cancel
-        </button>
-      </div>
-
-      <div className="flex gap-6">
-        <canvas ref={canvasRef} className="w-[150px] border rounded bg-white" />
-        <div className="space-y-2 text-sm text-gray-700 flex-1">
-          <div>
-            <label className="font-semibold block">Version Number</label>
-            <input
-              type="number"
-              className="w-full p-2 border rounded"
-              value={formData.version_number}
-              onChange={(e) => setFormData({ ...formData, version_number: e.target.value })}
-              placeholder="Enter new version number"
-            />
-          </div>
-
-          <div>
-            <label className="font-semibold block">Upload New File (Optional)</label>
-            <input
-              type="file"
-              accept="application/pdf"
-              onChange={(e) => setFormData({ ...formData, file: e.target.files?.[0] ?? null })}
-            />
-          </div>
-
-          <div>
-            <label className="font-semibold block">Cost</label>
-            <input
-              type="number"
-              className="w-full p-2 border rounded"
-              value={formData.cost}
-              onChange={(e) => setFormData({ ...formData, cost: parseFloat(e.target.value) })}
-            />
-          </div>
-
-          <div>
-            <label className="font-semibold block">Created By</label>
-            <input
-              className="w-full p-2 border rounded"
-              value={formData.created_by}
-              onChange={(e) => setFormData({ ...formData, created_by: e.target.value })}
-            />
-          </div>
-
-          <div>
-            <label className="font-semibold block">Status</label>
-            <input
-              className="w-full p-2 border rounded"
-              value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-            />
-          </div>
-
-          <div>
-            <label className="font-semibold block">Description</label>
-            <textarea
-              className="w-full p-2 border rounded"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
-          </div>
-
-          <button className="mt-3 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1">
-            <CheckCircle className="w-4 h-4" /> Submit (Mock)
-          </button>
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
+            {new Date(version.created_at).toLocaleDateString()} -{' '}
+            {new Date(version.created_at).toLocaleTimeString()}
+          </span>
+          <span className="px-2 py-1 bg-blue-100 text-blue-600 rounded-full font-medium">
+            {version.created_by}
+          </span>
+          {version.cost !== null && (
+            <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full font-semibold">
+              ${version.cost.toFixed(2)}
+            </span>
+          )}
+          {version.components?.status && (
+            <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full">
+              {version.components.status}
+            </span>
+          )}
         </div>
       </div>
     </div>

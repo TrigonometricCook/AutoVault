@@ -171,48 +171,50 @@ export default function PdfPreview() {
   }, [searchTerm, components]);
 
   return (
-    <div className="w-full max-w-6xl mx-auto mt-8 space-y-8 px-4">
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
-        <h1 className="text-2xl font-bold text-[#003366]">Components</h1>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by name or number..."
-            className="p-2 border border-gray-300 rounded-lg w-full sm:w-64"
-          />
-          <button
-            onClick={fetchComponents}
-            className="p-2 rounded-lg bg-[#003366] text-white hover:bg-[#002244] transition"
-          >
-            <RefreshCcw className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => router.push('/pages/components/add')}
-            className="p-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {loading && <p className="col-span-full text-center text-gray-600">Loading PDFs...</p>}
-        {error && <p className="col-span-full text-center text-red-500">{error}</p>}
-        {!loading && filteredComponents.length === 0 && (
-          <p className="col-span-full text-center text-gray-500">No components found.</p>
-        )}
-        {filteredComponents.map((component) => {
-          const fileUrl = getPublicUrl(component.file_path);
-          return (
-            <PdfCard
-              key={`${component.part_number}-${component.version_number}`}
-              fileUrl={fileUrl}
-              component={component}
+    <div className="h-screen overflow-y-auto">
+      <div className="w-full max-w-6xl mx-auto mt-8 space-y-8 px-4 pb-12">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
+          <h1 className="text-2xl font-bold text-[#003366]">Components</h1>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by name or number..."
+              className="p-2 border border-gray-300 rounded-lg w-full sm:w-64"
             />
-          );
-        })}
+            <button
+              onClick={fetchComponents}
+              className="p-2 rounded-lg bg-[#003366] text-white hover:bg-[#002244] transition"
+            >
+              <RefreshCcw className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => router.push('/pages/components/add')}
+              className="p-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {loading && <p className="col-span-full text-center text-gray-600">Loading PDFs...</p>}
+          {error && <p className="col-span-full text-center text-red-500">{error}</p>}
+          {!loading && filteredComponents.length === 0 && (
+            <p className="col-span-full text-center text-gray-500">No components found.</p>
+          )}
+          {filteredComponents.map((component) => {
+            const fileUrl = getPublicUrl(component.file_path);
+            return (
+              <PdfCard
+                key={`${component.part_number}-${component.version_number}`}
+                fileUrl={fileUrl}
+                component={component}
+              />
+            );
+          })}
+        </div>
       </div>
     </div>
   );

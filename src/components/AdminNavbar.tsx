@@ -1,3 +1,4 @@
+// components/Navbar.tsx
 'use client'
 
 import Link from 'next/link'
@@ -6,14 +7,12 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 const navItems = [
-  
   { label: 'Components', href: '/pages/components' },
-  { label: 'Assemblies', href: '/inventory' },
+  { label: 'Assemblies', href: '/pages/assemblies' },
   { label: 'Projects', href: '/suppliers' },
   { label: 'Inventory', href: '/suppliers1' },
   { label: 'Marketplace', href: '/suppliers2' },
   { label: 'Users', href: '/pages/users' },
-
 ]
 
 export default function Navbar() {
