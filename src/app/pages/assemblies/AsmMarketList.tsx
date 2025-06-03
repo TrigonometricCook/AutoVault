@@ -1,8 +1,7 @@
-"use client";
-
 import React, { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { Layers, RefreshCw } from "lucide-react";
+import { Plus } from "lucide-react";
+import { useSelectedItemStore } from "@/stores/AsmBuild";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -36,6 +35,8 @@ interface Seller {
 const MarketplacePage = ({ searchTerm }: { searchTerm: string }) => {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const { addSelectedItem } = useSelectedItemStore();
 
   const fetchMarketplaceData = async () => {
     setLoading(true);
@@ -79,8 +80,20 @@ const MarketplacePage = ({ searchTerm }: { searchTerm: string }) => {
     (listing) =>
       listing.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       listing.brand?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      listing.seller?.company_name?.toLowerCase().includes(searchTerm.toLowerCase())
+      listing.seller?.company_name
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase())
   );
+
+  const handleAdd = (listing: Listing) => {
+    console.log("Add clicked for listing:", listing);
+
+    // Store as a "product" type in the shared store
+    addSelectedItem({
+      id: listing.listing_id.toString(),
+      type: "product",
+    });
+  };
 
   return (
     <>
@@ -93,29 +106,39 @@ const MarketplacePage = ({ searchTerm }: { searchTerm: string }) => {
           {filteredListings.map((listing) => (
             <div
               key={listing.listing_id}
-              className="border border-gray-200 rounded p-3 hover:bg-gray-50 transition"
+              className="border border-gray-200 rounded p-3 hover:bg-gray-50 transition flex flex-col gap-1"
             >
-              <div className="flex justify-between items-center mb-1">
-                <div className="font-semibold text-gray-700">
-                  {listing.name || "Unnamed Listing"}
+              <div className="flex justify-between items-center">
+                <div>
+                  <div className="font-semibold text-gray-700">
+                    {listing.name || "Unnamed Listing"}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {listing.brand || "-"}
+                  </div>
                 </div>
-                <div className="text-sm text-gray-500">
-                  {listing.brand || "-"}
-                </div>
+                <button
+                  onClick={() => handleAdd(listing)}
+                  className="p-1 rounded hover:bg-blue-100 transition"
+                >
+                  <Plus className="w-4 h-4 text-blue-600" />
+                </button>
               </div>
-              <div className="text-sm text-gray-600 mb-1">
+              <div className="text-sm text-gray-600">
                 Spec: {listing.spec || "-"}
               </div>
-              <div className="text-xs text-gray-500 mb-2">
+              <div className="text-xs text-gray-500">
                 {listing.min_quantity && listing.unit_of_measurement
                   ? `Min: ${listing.min_quantity} ${listing.unit_of_measurement}`
                   : "No min. quantity specified"}
                 {" | "}
                 Delivery: {listing.delivery_time || "-"}
               </div>
-              <div className="text-sm font-medium text-blue-600 mb-1">
+              <div className="text-sm font-medium text-blue-600">
                 Cost: {listing.cost ? `$${listing.cost.toFixed(2)}` : "-"} | Total:{" "}
-                {listing.total_price ? `$${listing.total_price.toFixed(2)}` : "-"}
+                {listing.total_price
+                  ? `$${listing.total_price.toFixed(2)}`
+                  : "-"}
               </div>
               {listing.seller && (
                 <div className="text-xs text-gray-500">

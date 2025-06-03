@@ -64,7 +64,7 @@ const Card2 = () => {
   return (
     <div className="flex-1 bg-white rounded-2xl shadow-md flex flex-col p-4 h-174 overflow-y-auto">
       {/* Buttons + Search + Refresh */}
-      <div className="flex justify-between items-center pb-1 mb-3">
+      <div className="flex justify-between items-center pb-3 mb-3">
         {/* Buttons */}
         <div className="flex gap-2">
           {buttons.map((button) => (

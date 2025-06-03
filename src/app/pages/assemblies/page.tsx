@@ -1,7 +1,7 @@
 // app/page.tsx or pages/index.tsx
 import React from "react";
-import Card2 from "@/components/AsmAddSelect";
-import Card1 from "@/components/AsmList";
+import Card2 from "./AsmAddSelect";
+import Card1 from "@/app/pages/assemblies/AsmList";
 
 const HomePage = () => {
   return (

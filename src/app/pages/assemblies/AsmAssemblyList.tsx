@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { ChevronDown, ChevronRight, Box, Layers, RefreshCw, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Box, Plus } from "lucide-react";
+import { useSelectedItemStore } from "@/stores/AsmBuild";
 
 interface AssemblyNode {
   node_id: number;
@@ -27,14 +28,13 @@ interface TreeNode {
   data: AssemblyNode;
 }
 
-const AssemblyTreeCard = () => {
+const AssemblyTreeCard = ({ searchTerm }: { searchTerm: string }) => {
   const [assemblies, setAssemblies] = useState<Assembly[]>([]);
   const [assemblyNodes, setAssemblyNodes] = useState<AssemblyNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
   const [expandedAssemblies, setExpandedAssemblies] = useState<{ [key: number]: boolean }>({});
   const [expandedNodes, setExpandedNodes] = useState<{ [key: number]: boolean }>({});
-  const [searchTerm, setSearchTerm] = useState("");
 
   const fetchData = async () => {
     setLoading(true);
@@ -102,9 +102,9 @@ const AssemblyTreeCard = () => {
       const isExpanding = !prev[assemblyId];
       const newState: { [key: number]: boolean } = {};
       if (isExpanding) {
-        newState[assemblyId] = true; // expand the new one
+        newState[assemblyId] = true;
       }
-      return newState; // collapse all others
+      return newState;
     });
   };
 
@@ -145,18 +145,18 @@ const AssemblyTreeCard = () => {
           ) : (
             <Box className="w-4 h-4 text-gray-400" />
           )}
-          <span className="text-sm">{node.label} (qty: {node.data.quantity})</span>
+          <span className="text-sm">
+            {node.label} (qty: {node.data.quantity})
+          </span>
         </div>
 
         {isOpen && (
           <div className="ml-4">
-            {/* Render normal children */}
             {hasChildren &&
               node.children?.map((child) => (
                 <TreeNodeComponent key={child.id} node={child} />
               ))}
 
-            {/* Render sub-assembly as a nested subtree */}
             {node.data.sub_assembly_id && (
               <div className="mt-1 ml-2 border-l-2 border-blue-300 pl-2">
                 {buildTree(node.data.sub_assembly_id).map((subNode) => (
@@ -176,75 +176,56 @@ const AssemblyTreeCard = () => {
   );
 
   return (
-    <div className="flex-1 bg-white rounded-2xl shadow-md flex flex-col p-4 max-h-[695px] overflow-y-auto">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <Layers className="w-5 h-5 text-blue-500" />
-          Assemblies
-        </h2>
-        <div className="flex gap-2 items-center">
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-          <button
-            onClick={fetchData}
-            className="p-2 rounded-full hover:bg-gray-200 transition flex items-center justify-center"
-            title="Refresh"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-          </button>
-          <button className="bg-blue-500 text-white rounded px-3 py-1 text-sm hover:bg-blue-600 transition flex items-center gap-1">
-            <Plus className="w-4 h-4" />
-            Add
-          </button>
-        </div>
-      </div>
-
-      {/* Content */}
+    <div className="flex flex-col gap-2 overflow-y-auto max-h-[695px]">
       {loading ? (
         <p>Loading...</p>
       ) : filteredAssemblies.length === 0 ? (
         <p className="text-gray-500">No assemblies found.</p>
       ) : (
-        <div className="flex flex-col gap-2">
-          {filteredAssemblies.map((assembly) => (
-            <div key={assembly.assembly_id} className="border border-gray-200 rounded">
-              {/* Assembly Header */}
-              <div
-                onClick={() => toggleAssembly(assembly.assembly_id)}
-                className="flex justify-between items-center p-2 cursor-pointer bg-gray-50 hover:bg-gray-100"
-              >
-                <div className="flex items-center gap-2 font-semibold text-gray-700">
-                  {expandedAssemblies[assembly.assembly_id] ? (
-                    <ChevronDown className="w-4 h-4" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4" />
-                  )}
-                  {assembly.assembly_name || "Unnamed"} (ID: {assembly.assembly_id})
-                </div>
-                <div className="text-sm text-gray-500">{assembly.status || "-"}</div>
+        filteredAssemblies.map((assembly) => (
+          <div key={assembly.assembly_id} className="border border-gray-200 rounded">
+            <div
+              onClick={() => toggleAssembly(assembly.assembly_id)}
+              className="flex justify-between items-center p-2 cursor-pointer bg-gray-50 hover:bg-gray-100"
+            >
+              <div className="flex items-center gap-2 font-semibold text-gray-700">
+                {expandedAssemblies[assembly.assembly_id] ? (
+                  <ChevronDown className="w-4 h-4" />
+                ) : (
+                  <ChevronRight className="w-4 h-4" />
+                )}
+                {assembly.assembly_name || "Unnamed"} (ID: {assembly.assembly_id})
               </div>
-
-              {/* Collapsible Content */}
-              {expandedAssemblies[assembly.assembly_id] && (
-                <div className="p-2">
-                  {buildTree(assembly.assembly_id).length === 0 ? (
-                    <div className="text-gray-400 ml-4">No nodes.</div>
-                  ) : (
-                    buildTree(assembly.assembly_id).map((rootNode) => (
-                      <TreeNodeComponent key={rootNode.id} node={rootNode} />
-                    ))
-                  )}
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <div className="text-sm text-gray-500">{assembly.status || "-"}</div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    useSelectedItemStore.getState().addSelectedItem({
+                      id: assembly.assembly_id.toString(),
+                      type: "assembly",
+                    });
+                  }}
+                  className="p-1 rounded hover:bg-blue-100 transition"
+                >
+                  <Plus className="w-4 h-4 text-blue-600" />
+                </button>
+              </div>
             </div>
-          ))}
-        </div>
+
+            {expandedAssemblies[assembly.assembly_id] && (
+              <div className="p-2">
+                {buildTree(assembly.assembly_id).length === 0 ? (
+                  <div className="text-gray-400 ml-4">No nodes.</div>
+                ) : (
+                  buildTree(assembly.assembly_id).map((rootNode) => (
+                    <TreeNodeComponent key={rootNode.id} node={rootNode} />
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        ))
       )}
     </div>
   );
