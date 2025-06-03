@@ -5,7 +5,6 @@ import { useSelectedItemStore } from "@/stores/AsmBuild";
 import { X, Save } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 
-// Initialize Supabase client
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -28,14 +27,13 @@ const SelectedItemsList = () => {
     }
 
     try {
-      // 1️⃣ Insert the new assembly
+      // Insert new assembly (space_occupancy removed)
       const { data: newAssembly, error: assemblyError } = await supabase
         .from("assemblies")
         .insert({
           assembly_name: assemblyName,
           description: description,
           status: "draft",
-          space_occupancy: 0, // default
         })
         .select("assembly_id")
         .single();
@@ -44,7 +42,6 @@ const SelectedItemsList = () => {
 
       const assemblyId = newAssembly.assembly_id;
 
-      // 2️⃣ Prepare the nodes to insert
       const nodesToInsert = selectedItems.map((item) => {
         if (item.type === "component") {
           return {
@@ -74,7 +71,6 @@ const SelectedItemsList = () => {
         throw new Error("Unsupported item type");
       });
 
-      // 3️⃣ Insert the nodes
       const { error: nodeError } = await supabase
         .from("assembly_nodes")
         .insert(nodesToInsert);
@@ -98,30 +94,27 @@ const SelectedItemsList = () => {
   };
 
   return (
-    <div
-      className="border border-blue-900 rounded-lg p-4 text-white flex flex-col gap-2 shadow"
-      style={{ backgroundColor: "#002969" }}
-    >
-      <h4 className="text-lg font-semibold">Add Assembly</h4>
+    <div className="bg-white border border-gray-300 rounded-xl p-4 shadow-sm flex flex-col gap-3">
+      <h4 className="text-lg font-semibold text-gray-800 mb-1">Add Assembly</h4>
 
       <input
         type="text"
         placeholder="Assembly Name"
         value={assemblyName}
         onChange={(e) => setAssemblyName(e.target.value)}
-        className="border border-blue-900 rounded px-2 py-1 text-sm text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+        className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
       />
       <input
         type="text"
         placeholder="Description"
         value={description}
         onChange={(e) => setDescription(e.target.value)}
-        className="border border-blue-900 rounded px-2 py-1 text-sm text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+        className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
       />
 
-      <div className="flex flex-col gap-1 text-sm mt-2">
+      <div className="flex flex-col gap-1 text-sm mt-2 max-h-40 overflow-y-auto">
         {selectedItems.length === 0 ? (
-          <p className="italic text-gray-300 text-center">
+          <p className="italic text-gray-400 text-center py-2">
             No selected items.
           </p>
         ) : (
@@ -132,9 +125,9 @@ const SelectedItemsList = () => {
                   ? `${item.id}-${item.versionId}`
                   : `${item.id}-${item.type}`
               }
-              className="flex justify-between items-center bg-blue-800 rounded px-2 py-1"
+              className="flex justify-between items-center bg-gray-100 rounded-lg px-3 py-1.5 hover:bg-gray-200 transition"
             >
-              <span>
+              <span className="truncate text-gray-800">
                 <span className="font-medium">{item.id}</span>
                 {item.type === "component" && item.versionId
                   ? ` — v${item.versionId}`
@@ -144,7 +137,7 @@ const SelectedItemsList = () => {
               </span>
               <button
                 onClick={() => removeSelectedItem(item.id, item.type)}
-                className="text-red-300 hover:text-red-500 transition"
+                className="text-gray-400 hover:text-red-500 transition"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -156,13 +149,13 @@ const SelectedItemsList = () => {
       <div className="flex justify-end gap-2 mt-3">
         <button
           onClick={handleClear}
-          className="flex items-center gap-1 px-3 py-1 text-sm border border-blue-900 text-white rounded hover:bg-blue-900 transition"
+          className="flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
         >
           <X className="w-4 h-4" /> Clear All
         </button>
         <button
           onClick={handleSave}
-          className="flex items-center gap-1 px-3 py-1 text-sm rounded transition bg-yellow-400 text-black hover:bg-yellow-500"
+          className="flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg transition bg-blue-500 text-white hover:bg-blue-600 font-medium"
         >
           <Save className="w-4 h-4" /> Save
         </button>
