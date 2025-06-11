@@ -62,7 +62,7 @@ const Card2 = () => {
   ];
 
   return (
-    <div className="flex-1 bg-white rounded-2xl shadow-md flex flex-col p-4 h-174 overflow-y-auto">
+    <div className="flex-1 bg-white rounded-2xl shadow-md flex flex-col p-4 overflow-y-auto" style={{ height: '730px' }}>
       {/* Buttons + Search + Refresh */}
       <div className="flex justify-between items-center pb-3 mb-3">
         {/* Buttons */}

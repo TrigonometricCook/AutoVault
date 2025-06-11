@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Edit, Trash2, PlusCircle, XCircle } from 'lucide-react';
+import { Edit, Trash2, PlusCircle, XCircle, Download } from 'lucide-react';
 import EditableVersionCard from '@/components/NewVersion';
 
 function getPublicUrl(file_path: string) {
@@ -55,7 +55,7 @@ export default function EditComponentPage() {
         return;
       }
 
-      console.log('Fetched data:', data); // 🔥 LOG: check all data!
+      console.log('Fetched data:', data);
       setVersions(data || []);
       setLoading(false);
     };
@@ -67,32 +67,32 @@ export default function EditComponentPage() {
   const latest = versions[0];
 
   if (loading) {
-    return <div className="p-6">Loading...</div>;
+    return <div className="p-8 text-lg">Loading...</div>;
   }
 
   if (error) {
-    return <div className="p-6 text-red-500">Error: {error}</div>;
+    return <div className="p-8 text-red-600 font-semibold">Error: {error}</div>;
   }
 
   return (
-    <div className="h-screen overflow-y-auto p-6 bg-gray-50">
-      <div className="max-w-5xl mx-auto space-y-6">
+    <div className="h-screen overflow-y-auto p-8 bg-gray-100">
+      <div className="max-w-2xl mx-auto space-y-8">
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-[#003366]">Component Versions</h2>
+          <h2 className="text-3xl font-bold text-[#003366]">Component Versions</h2>
           <div className="flex gap-3">
             {!adding && (
               <button
                 onClick={() => setAdding(true)}
-                className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded shadow hover:bg-blue-700"
               >
-                <PlusCircle className="w-4 h-4" /> Add New Version
+                <PlusCircle className="w-5 h-5" /> Add
               </button>
             )}
             <button
               onClick={handleCancel}
-              className="flex items-center gap-1 px-3 py-1.5 bg-gray-300 text-gray-800 text-sm rounded hover:bg-gray-400"
+              className="flex items-center gap-2 px-4 py-2 bg-gray-300 text-gray-800 text-sm rounded shadow hover:bg-gray-400"
             >
-              <XCircle className="w-4 h-4" /> Cancel
+              <XCircle className="w-5 h-5" /> Cancel
             </button>
           </div>
         </div>
@@ -106,9 +106,11 @@ export default function EditComponentPage() {
           />
         )}
 
-        {versions.map((version) => (
-          <VersionCard key={version.version_number} version={version} />
-        ))}
+        <div className="flex flex-col items-center gap-6">
+          {versions.map((version) => (
+            <VersionCard key={version.version_number} version={version} />
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -121,38 +123,56 @@ function VersionCard({ version }: { version: Version }) {
     renderPDF(version.file_path, canvasRef);
   }, [version]);
 
+  const handleDownload = () => {
+    const url = getPublicUrl(version.file_path);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = version.file_path.split('/').pop() || 'file.pdf';
+    link.click();
+  };
+
   return (
-    <div className="flex flex-col md:flex-row border rounded-xl bg-white shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden">
-      <canvas
-        ref={canvasRef}
-        className="w-full md:w-[200px] h-[150px] md:h-auto object-cover"
-      />
-      <div className="flex-1 flex flex-col justify-between p-4">
+    <div className="w-full max-w-lg-lg flex flex-col md:flex-row border rounded-xl bg-white shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
+      <div className="flex-shrink-0 w-full md:w-48 h-48 bg-gray-200">
+        <canvas
+          ref={canvasRef}
+          className="w-full h-full object-cover rounded-t-xl md:rounded-l-xl md:rounded-tr-none"
+        />
+      </div>
+      <div className="flex-1 flex flex-col justify-between p-4 space-y-3">
         <div>
-          <h3 className="text-lg font-semibold text-[#003366] mb-2">Version {version.version_number}</h3>
-          <p className="text-sm text-gray-700 mb-2 break-all">
+          <h3 className="text-lg font-semibold text-[#003366] mb-1">
+            Version {version.version_number}
+          </h3>
+          <p className="text-sm text-gray-800 break-words">
             {version.components?.description ?? 'No description available.'}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 text-xs">
-          <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
+        <div className="flex flex-wrap gap-2 text-xs font-medium">
+          <span className="px-2 py-1 bg-gray-200 text-gray-700 rounded-full">
             {new Date(version.created_at).toLocaleDateString()} -{' '}
             {new Date(version.created_at).toLocaleTimeString()}
           </span>
-          <span className="px-2 py-1 bg-blue-100 text-blue-600 rounded-full font-medium">
+          <span className="px-2 py-1 bg-blue-200 text-blue-700 rounded-full">
             {version.created_by}
           </span>
           {version.cost !== null && (
-            <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full font-semibold">
+            <span className="px-2 py-1 bg-green-200 text-green-800 rounded-full">
               ${version.cost.toFixed(2)}
             </span>
           )}
           {version.components?.status && (
-            <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full">
+            <span className="px-2 py-1 bg-purple-200 text-purple-700 rounded-full">
               {version.components.status}
             </span>
           )}
         </div>
+        <button
+          onClick={handleDownload}
+          className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white text-xs rounded shadow hover:bg-green-700"
+        >
+          <Download className="w-4 h-4" /> Download PDF
+        </button>
       </div>
     </div>
   );
@@ -168,8 +188,8 @@ async function renderPDF(filePath: string, canvasRef: React.RefObject<HTMLCanvas
     const page = await pdf.getPage(1);
 
     const viewport = page.getViewport({ scale: 1 });
-    const maxWidth = 150;
-    const maxHeight = 200;
+    const maxWidth = 180;
+    const maxHeight = 250;
     const scale = Math.min(maxWidth / viewport.width, maxHeight / viewport.height);
     const scaledViewport = page.getViewport({ scale });
 

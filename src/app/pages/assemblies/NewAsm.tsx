@@ -1,8 +1,8 @@
-"use client";
+// "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSelectedItemStore } from "@/stores/AsmBuild";
-import { X, Save } from "lucide-react";
+import { X, Save, FilePlus, FileX } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -19,6 +19,47 @@ const SelectedItemsList = () => {
 
   const [assemblyName, setAssemblyName] = useState("");
   const [description, setDescription] = useState("");
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const renderPDF = async () => {
+      if (!pdfFile || !canvasRef.current) return;
+
+      try {
+        const pdfjsLib = await import("pdfjs-dist/build/pdf");
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+
+        const fileURL = URL.createObjectURL(pdfFile);
+        const loadingTask = pdfjsLib.getDocument(fileURL);
+        const pdf = await loadingTask.promise;
+        const page = await pdf.getPage(1);
+
+        const viewport = page.getViewport({ scale: 1 });
+        const maxWidth = 180;
+        const maxHeight = 250;
+        const scale = Math.min(maxWidth / viewport.width, maxHeight / viewport.height);
+        const scaledViewport = page.getViewport({ scale });
+
+        const canvas = canvasRef.current;
+        const context = canvas.getContext("2d");
+        if (!context) return;
+
+        canvas.width = scaledViewport.width;
+        canvas.height = scaledViewport.height;
+
+        await page.render({
+          canvasContext: context,
+          viewport: scaledViewport,
+        }).promise;
+      } catch (error) {
+        console.error("PDF render error:", error);
+      }
+    };
+
+    renderPDF();
+  }, [pdfFile]);
 
   const handleSave = async () => {
     if (!assemblyName.trim()) {
@@ -27,7 +68,6 @@ const SelectedItemsList = () => {
     }
 
     try {
-      // Insert new assembly (space_occupancy removed)
       const { data: newAssembly, error: assemblyError } = await supabase
         .from("assemblies")
         .insert({
@@ -41,6 +81,29 @@ const SelectedItemsList = () => {
       if (assemblyError) throw assemblyError;
 
       const assemblyId = newAssembly.assembly_id;
+
+      let uploadedFilePath = null;
+      if (pdfFile) {
+        const fileExt = pdfFile.name.split(".").pop();
+        const newFileName = `${assemblyId}.${fileExt}`;
+        const { data: fileData, error: fileError } = await supabase.storage
+          .from("assembly-drawings")
+          .upload(newFileName, pdfFile, {
+            contentType: "application/pdf",
+            upsert: true,
+          });
+
+        if (fileError) throw fileError;
+
+        uploadedFilePath = fileData.path;
+
+        const { error: updateError } = await supabase
+          .from("assemblies")
+          .update({ file_path: uploadedFilePath })
+          .eq("assembly_id", assemblyId);
+
+        if (updateError) throw updateError;
+      }
 
       const nodesToInsert = selectedItems.map((item) => {
         if (item.type === "component") {
@@ -80,6 +143,7 @@ const SelectedItemsList = () => {
       alert("Assembly saved successfully!");
       setAssemblyName("");
       setDescription("");
+      setPdfFile(null);
       clearSelectedItems();
     } catch (error: any) {
       console.error("Error saving assembly:", error);
@@ -90,7 +154,13 @@ const SelectedItemsList = () => {
   const handleClear = () => {
     setAssemblyName("");
     setDescription("");
+    setPdfFile(null);
     clearSelectedItems();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setPdfFile(file);
   };
 
   return (
@@ -112,6 +182,38 @@ const SelectedItemsList = () => {
         className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
       />
 
+      <div className="flex items-center gap-2 mt-2">
+        <label
+          htmlFor="pdf-upload"
+          className="flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded-lg cursor-pointer hover:bg-gray-100 transition"
+        >
+          <FilePlus className="w-4 h-4" /> Choose File
+        </label>
+        <input
+          id="pdf-upload"
+          type="file"
+          accept="application/pdf"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+        {pdfFile && (
+          <button
+            onClick={() => setPdfFile(null)}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-red-100 hover:text-red-600 transition"
+          >
+            <FileX className="w-4 h-4" /> Cancel
+          </button>
+        )}
+      </div>
+
+      {/* PDF First Page Preview */}
+      {pdfFile && (
+        <div className="mt-2 border border-gray-300 rounded-lg overflow-hidden shadow-sm flex justify-center">
+          <canvas ref={canvasRef} className="max-h-48" />
+        </div>
+      )}
+
+      {/* Selected Items */}
       <div className="flex flex-col gap-1 text-sm mt-2 max-h-40 overflow-y-auto">
         {selectedItems.length === 0 ? (
           <p className="italic text-gray-400 text-center py-2">

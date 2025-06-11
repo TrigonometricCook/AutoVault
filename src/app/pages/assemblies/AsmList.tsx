@@ -197,7 +197,7 @@ const AssemblyTreeCard = () => {
   );
 
   return (
-    <div className="flex-1 bg-white rounded-2xl shadow-md flex flex-col p-4 max-h-[695px] overflow-y-auto">
+    <div className="flex-1 bg-white rounded-2xl shadow-md flex flex-col p-4 max-h-[730px] overflow-y-auto">
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
