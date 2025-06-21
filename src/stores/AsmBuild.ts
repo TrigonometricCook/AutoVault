@@ -1,19 +1,26 @@
 import { create } from "zustand";
 
 type SelectedItem = {
-  id: string; // Could be componentId, assemblyId, or productId
-  versionId?: string; // Only for components
+  id: string;
+  versionId?: string; // For components only
   type: "component" | "assembly" | "product";
+  quantity: number; // ✅ NEW
 };
 
 type SelectedItemStore = {
   selectedItems: SelectedItem[];
-  addSelectedItem: (item: SelectedItem) => void;
+  addSelectedItem: (item: Omit<SelectedItem, "quantity">) => void;
   removeSelectedItem: (
     id: string,
     type: "component" | "assembly" | "product",
     versionId?: string
   ) => void;
+  updateQuantity: (
+    id: string,
+    type: "component" | "assembly" | "product",
+    quantity: number,
+    versionId?: string
+  ) => void; // ✅ NEW
   clearSelectedItems: () => void;
 };
 
@@ -23,7 +30,6 @@ export const useSelectedItemStore = create<SelectedItemStore>((set) => ({
     set((state) => {
       let filtered;
       if (item.type === "component") {
-        // Remove existing component entry with same id + versionId
         filtered = state.selectedItems.filter(
           (v) =>
             !(
@@ -33,18 +39,20 @@ export const useSelectedItemStore = create<SelectedItemStore>((set) => ({
             )
         );
       } else {
-        // Remove existing assembly or product with same id
         filtered = state.selectedItems.filter(
           (v) => !(v.id === item.id && v.type === item.type)
         );
       }
-      return { selectedItems: [...filtered, item] };
+
+      return {
+        selectedItems: [...filtered, { ...item, quantity: 1 }], // ✅ default quantity
+      };
     }),
+
   removeSelectedItem: (id, type, versionId) =>
     set((state) => {
       let filtered;
       if (type === "component" && versionId) {
-        // Remove specific version of component
         filtered = state.selectedItems.filter(
           (v) =>
             !(
@@ -54,12 +62,26 @@ export const useSelectedItemStore = create<SelectedItemStore>((set) => ({
             )
         );
       } else {
-        // Remove assembly or product by id
         filtered = state.selectedItems.filter(
           (v) => !(v.id === id && v.type === type)
         );
       }
       return { selectedItems: filtered };
     }),
+
+  updateQuantity: (id, type, quantity, versionId) =>
+    set((state) => {
+      const updated = state.selectedItems.map((item) => {
+        const isMatch =
+          item.id === id &&
+          item.type === type &&
+          (type !== "component" || item.versionId === versionId);
+        return isMatch
+          ? { ...item, quantity: Math.max(1, quantity) } // ✅ clamp to 1
+          : item;
+      });
+      return { selectedItems: updated };
+    }),
+
   clearSelectedItems: () => set({ selectedItems: [] }),
 }));

@@ -9,9 +9,7 @@ import { supabase } from '@/lib/supabase'
 const navItems = [
   { label: 'Components', href: '/pages/components' },
   { label: 'Assemblies', href: '/pages/assemblies' },
-  { label: 'Projects', href: '/suppliers' },
-  { label: 'Inventory', href: '/suppliers1' },
-  { label: 'Marketplace', href: '/suppliers2' },
+  { label: 'Projects', href: '/pages/projects' },
   { label: 'Users', href: '/pages/users' },
 ]
 

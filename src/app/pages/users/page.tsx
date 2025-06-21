@@ -18,11 +18,13 @@ export default function AddUserPage() {
 
   return (
     <div className="flex h-screen">
-      <div className="w-7/10 max-h-[calc(100vh-6rem)] overflow-y-auto p-6 bg-gray-50 border-r">
-        <UserTable onEditUser={(user) => setRightPane({ edit: user })} />
+      <div className="w-7/10 h-full p-6 bg-gray-50 border-r border-gray-300 flex flex-col">
+        <div className="overflow-y-auto flex-1">
+          <UserTable onEditUser={(user) => setRightPane({ edit: user })} />
+        </div>
       </div>
 
-      <div className="w-3/10 p-6 overflow-hidden">
+      <div className="w-3/10 p-6 overflow-hidden h-full">
         {renderRightComponent()}
       </div>
     </div>

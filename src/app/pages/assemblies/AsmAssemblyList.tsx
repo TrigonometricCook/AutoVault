@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { ChevronDown, ChevronRight, Box, Plus } from "lucide-react";
 import { useSelectedItemStore } from "@/stores/AsmBuild";
+import PDFPreview from "./PDFPreview"; // 👈 import the preview
 
 interface AssemblyNode {
   node_id: number;
@@ -19,6 +20,7 @@ interface Assembly {
   assembly_name: string | null;
   status: string | null;
   space_occupancy: number;
+  file_path?: string | null; // 👈 make sure file_path is included
 }
 
 interface TreeNode {
@@ -40,7 +42,7 @@ const AssemblyTreeCard = ({ searchTerm }: { searchTerm: string }) => {
     setLoading(true);
     const { data: assembliesData, error: assembliesError } = await supabase
       .from("assemblies")
-      .select("*")
+      .select("*") // ensure file_path is fetched
       .order("assembly_id", { ascending: true });
 
     if (assembliesError) {
@@ -137,11 +139,7 @@ const AssemblyTreeCard = ({ searchTerm }: { searchTerm: string }) => {
           }`}
         >
           {hasChildren || node.data.sub_assembly_id ? (
-            isOpen ? (
-              <ChevronDown className="w-4 h-4" />
-            ) : (
-              <ChevronRight className="w-4 h-4" />
-            )
+            isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />
           ) : (
             <Box className="w-4 h-4 text-gray-400" />
           )}
@@ -215,6 +213,12 @@ const AssemblyTreeCard = ({ searchTerm }: { searchTerm: string }) => {
 
             {expandedAssemblies[assembly.assembly_id] && (
               <div className="p-2">
+                {/* PDF Preview */}
+                {assembly.file_path && (
+                  <PDFPreview filePath={assembly.file_path} />
+                )}
+
+                {/* Tree */}
                 {buildTree(assembly.assembly_id).length === 0 ? (
                   <div className="text-gray-400 ml-4">No nodes.</div>
                 ) : (

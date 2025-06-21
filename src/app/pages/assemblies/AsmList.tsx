@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import AddAssemblyCard from "@/app/pages/assemblies/NewAsm";
+import PDFPreview from "./PDFPreview";
 
 interface AssemblyNode {
   node_id: number;
@@ -26,6 +27,7 @@ interface Assembly {
   assembly_id: number;
   assembly_name: string | null;
   status: string | null;
+  file_path: string | null;
   space_occupancy: number;
 }
 
@@ -170,13 +172,11 @@ const AssemblyTreeCard = () => {
 
         {isOpen && (
           <div className="ml-4">
-            {/* Render normal children */}
             {hasChildren &&
               node.children?.map((child) => (
                 <TreeNodeComponent key={child.id} node={child} />
               ))}
 
-            {/* Render sub-assembly as a nested subtree */}
             {node.data.sub_assembly_id && (
               <div className="mt-1 ml-2 border-l-2 border-blue-300 pl-2">
                 {buildTree(node.data.sub_assembly_id).map((subNode) => (
@@ -242,12 +242,8 @@ const AssemblyTreeCard = () => {
         </div>
       </div>
 
-      {/* Add Assembly Form */}
-      {showAddForm && (
-        <AddAssemblyCard/>
-      )}
+      {showAddForm && <AddAssemblyCard />}
 
-      {/* Content */}
       {loading ? (
         <p>Loading...</p>
       ) : filteredAssemblies.length === 0 ? (
@@ -259,7 +255,6 @@ const AssemblyTreeCard = () => {
               key={assembly.assembly_id}
               className="border border-gray-200 rounded"
             >
-              {/* Assembly Header */}
               <div
                 onClick={() => toggleAssembly(assembly.assembly_id)}
                 className="flex justify-between items-center p-2 cursor-pointer bg-gray-50 hover:bg-gray-100"
@@ -270,17 +265,19 @@ const AssemblyTreeCard = () => {
                   ) : (
                     <ChevronRight className="w-4 h-4" />
                   )}
-                  {assembly.assembly_name || "Unnamed"} (ID:{" "}
-                  {assembly.assembly_id})
+                  {assembly.assembly_name || "Unnamed"} (ID: {assembly.assembly_id})
                 </div>
                 <div className="text-sm text-gray-500">
                   {assembly.status || "-"}
                 </div>
               </div>
 
-              {/* Collapsible Content */}
               {expandedAssemblies[assembly.assembly_id] && (
                 <div className="p-2">
+                  {assembly.file_path && (
+                    <PDFPreview filePath={assembly.file_path} />
+                  )}
+
                   {buildTree(assembly.assembly_id).length === 0 ? (
                     <div className="text-gray-400 ml-4">No nodes.</div>
                   ) : (

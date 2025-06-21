@@ -1,4 +1,4 @@
-// "use client";
+"use client";
 
 import React, { useState, useEffect, useRef } from "react";
 import { useSelectedItemStore } from "@/stores/AsmBuild";
@@ -15,6 +15,7 @@ const SelectedItemsList = () => {
     selectedItems,
     removeSelectedItem,
     clearSelectedItems,
+    updateQuantity,
   } = useSelectedItemStore();
 
   const [assemblyName, setAssemblyName] = useState("");
@@ -22,6 +23,7 @@ const SelectedItemsList = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const renderTaskRef = useRef<any>(null);
 
   useEffect(() => {
     const renderPDF = async () => {
@@ -49,16 +51,29 @@ const SelectedItemsList = () => {
         canvas.width = scaledViewport.width;
         canvas.height = scaledViewport.height;
 
-        await page.render({
+        if (renderTaskRef.current) {
+          renderTaskRef.current.cancel();
+        }
+
+        const renderTask = page.render({
           canvasContext: context,
           viewport: scaledViewport,
-        }).promise;
+        });
+
+        renderTaskRef.current = renderTask;
+        await renderTask.promise;
       } catch (error) {
         console.error("PDF render error:", error);
       }
     };
 
     renderPDF();
+
+    return () => {
+      if (renderTaskRef.current) {
+        renderTaskRef.current.cancel();
+      }
+    };
   }, [pdfFile]);
 
   const handleSave = async () => {
@@ -106,30 +121,20 @@ const SelectedItemsList = () => {
       }
 
       const nodesToInsert = selectedItems.map((item) => {
+        const base = {
+          assembly_id: assemblyId,
+          quantity: item.quantity || 1,
+          component_part_number: null,
+          sub_assembly_id: null,
+          listing_id: null,
+        };
+
         if (item.type === "component") {
-          return {
-            assembly_id: assemblyId,
-            component_part_number: item.id,
-            sub_assembly_id: null,
-            listing_id: null,
-            quantity: 1,
-          };
+          return { ...base, component_part_number: item.id };
         } else if (item.type === "assembly") {
-          return {
-            assembly_id: assemblyId,
-            component_part_number: null,
-            sub_assembly_id: parseInt(item.id, 10),
-            listing_id: null,
-            quantity: 1,
-          };
+          return { ...base, sub_assembly_id: parseInt(item.id, 10) };
         } else if (item.type === "product") {
-          return {
-            assembly_id: assemblyId,
-            component_part_number: null,
-            sub_assembly_id: null,
-            listing_id: parseInt(item.id, 10),
-            quantity: 1,
-          };
+          return { ...base, listing_id: parseInt(item.id, 10) };
         }
         throw new Error("Unsupported item type");
       });
@@ -206,43 +211,58 @@ const SelectedItemsList = () => {
         )}
       </div>
 
-      {/* PDF First Page Preview */}
       {pdfFile && (
         <div className="mt-2 border border-gray-300 rounded-lg overflow-hidden shadow-sm flex justify-center">
           <canvas ref={canvasRef} className="max-h-48" />
         </div>
       )}
 
-      {/* Selected Items */}
       <div className="flex flex-col gap-1 text-sm mt-2 max-h-40 overflow-y-auto">
         {selectedItems.length === 0 ? (
-          <p className="italic text-gray-400 text-center py-2">
-            No selected items.
-          </p>
+          <p className="italic text-gray-400 text-center py-2">No selected items.</p>
         ) : (
           selectedItems.map((item) => (
             <div
-              key={
-                item.type === "component"
-                  ? `${item.id}-${item.versionId}`
-                  : `${item.id}-${item.type}`
-              }
-              className="flex justify-between items-center bg-gray-100 rounded-lg px-3 py-1.5 hover:bg-gray-200 transition"
+              key={`${item.id}-${item.type}`}
+              className="flex flex-col gap-1 bg-gray-100 rounded-lg px-3 py-2 hover:bg-gray-200 transition"
             >
-              <span className="truncate text-gray-800">
-                <span className="font-medium">{item.id}</span>
-                {item.type === "component" && item.versionId
-                  ? ` — v${item.versionId}`
-                  : ""}
-                {" "}
-                ({item.type})
-              </span>
-              <button
-                onClick={() => removeSelectedItem(item.id, item.type)}
-                className="text-gray-400 hover:text-red-500 transition"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex justify-between items-center">
+                <span className="truncate text-gray-800">
+                  <span className="font-medium">{item.id}</span>
+                  {item.type === "component" && item.versionId
+                    ? ` — v${item.versionId}`
+                    : ""}{" "}
+                  ({item.type})
+                </span>
+                <button
+                  onClick={() => removeSelectedItem(item.id, item.type)}
+                  className="text-gray-400 hover:text-red-500 transition"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-sm text-gray-600">Qty:</span>
+                <div className="flex items-center border rounded px-2 py-0.5 bg-white shadow-sm">
+                  <button
+                    onClick={() =>
+                      updateQuantity(item.id, item.type, item.quantity - 1)
+                    }
+                    className="text-gray-600 hover:text-blue-600 px-1"
+                  >
+                    −
+                  </button>
+                  <span className="mx-2 text-sm w-4 text-center">{item.quantity}</span>
+                  <button
+                    onClick={() =>
+                      updateQuantity(item.id, item.type, item.quantity + 1)
+                    }
+                    className="text-gray-600 hover:text-blue-600 px-1"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
             </div>
           ))
         )}
