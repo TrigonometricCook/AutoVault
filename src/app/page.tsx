@@ -17,36 +17,46 @@ export default function UsernameLoginForm() {
     setLoading(true);
 
     try {
-      // ✅ Step 1: Look up the email from the profiles table using the username
+      // ✅ Step 1: Fetch email and status from profiles
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('email')
+        .select('id, email, status')
         .eq('username', username)
         .single();
 
-      if (profileError || !profile || !profile.email) {
-        setError('User does not exist.');
+      if (profileError || !profile) {
+        setError('User not found.');
         setLoading(false);
         return;
       }
 
-      // ✅ Step 2: Authenticate with Supabase Auth using the email + password
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      if (profile.status === 'disabled') {
+        setError('Account is disabled.');
+        setLoading(false);
+        return;
+      }
+
+      // ✅ Step 2: Login using Supabase Auth (email is required)
+      const { error: authError } = await supabase.auth.signInWithPassword({
         email: profile.email,
         password,
       });
 
-      if (signInError) {
+      if (authError) {
         setError('Incorrect password.');
         setLoading(false);
         return;
       }
 
-      // ✅ Success: Save username locally and redirect
+      // ✅ Step 3: Save session-related data if needed
       localStorage.setItem('loggedInUser', username);
+      localStorage.setItem('userId', profile.id);
+      console.log('✅ Login successful. ID:', profile.id);
+
+      // ✅ Step 4: Redirect
       router.push('/pages/users');
     } catch (err: any) {
-      setError(err.message || 'Something went wrong.');
+      setError(err.message || 'An unexpected error occurred.');
     } finally {
       setLoading(false);
     }

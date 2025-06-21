@@ -1,35 +1,34 @@
-'use client'
+'use client';
 
-import "./globals.css";
-//import SessionRedirector from '@/components/SessionRedirector';
+import './globals.css';
 import { usePathname } from 'next/navigation';
-import Navbar from "../components/Navbar";
-import AdminNavbar from "@/components/AdminNavbar";
+import AdminNavbar from '@/components/AdminNavbar';
+import SessionRedirector from '@/components/SessionRedirector';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  if (!pathname.startsWith('/pages')) {
-    return (
-      <html lang="en">
-        <body className="antialiased bg-white text-black">
-          <main className="p-0">
-            {children}
-          </main>
-        </body>
-      </html>
-    );
-  }
-
-  const isAdminPage = pathname.startsWith('/pages');
+  // Only public (unauthenticated) pages render outside the session wrapper
+  const isProtectedRoute = pathname.startsWith('/pages');
 
   return (
     <html lang="en">
       <body className="antialiased bg-white text-black">
-        {isAdminPage ? <AdminNavbar /> : <Navbar />}
-        <main className="p-0">
-          {children}
-        </main>
+        {isProtectedRoute ? (
+          <>
+            <AdminNavbar />
+            <main className="p-0">
+              <SessionRedirector>
+                {children}
+              </SessionRedirector>
+            </main>
+          </>
+        ) : (
+          // For login page or public route
+          <main className="p-0">
+            {children}
+          </main>
+        )}
       </body>
     </html>
   );
