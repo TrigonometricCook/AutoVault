@@ -12,55 +12,84 @@ export default function UsernameLoginForm() {
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  e.preventDefault();
+  setError('');
+  setLoading(true);
 
-    try {
-      // ✅ Step 1: Fetch email and status from profiles
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, email, status')
-        .eq('username', username)
-        .single();
+  try {
+    // ✅ Step 1: Fetch email, role_id, and status from profiles
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, email, status, role_id, username')
+      .eq('username', username)
+      .single();
 
-      if (profileError || !profile) {
-        setError('User not found.');
-        setLoading(false);
-        return;
-      }
-
-      if (profile.status === 'disabled') {
-        setError('Account is disabled.');
-        setLoading(false);
-        return;
-      }
-
-      // ✅ Step 2: Login using Supabase Auth (email is required)
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email: profile.email,
-        password,
-      });
-
-      if (authError) {
-        setError('Incorrect password.');
-        setLoading(false);
-        return;
-      }
-
-      // ✅ Step 3: Save session-related data if needed
-      localStorage.setItem('loggedInUser', username);
-      localStorage.setItem('userId', profile.id);
-      console.log('✅ Login successful. ID:', profile.id);
-
-      // ✅ Step 4: Redirect
-      router.push('/pages/users');
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred.');
-    } finally {
+    if (profileError || !profile) {
+      setError('User not found.');
       setLoading(false);
+      return;
     }
-  };
+
+    if (profile.status === 'disabled') {
+      setError('Account is disabled.');
+      setLoading(false);
+      return;
+    }
+
+    // ✅ Step 2: Login using Supabase Auth (email + password)
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email: profile.email,
+      password,
+    });
+
+    if (authError) {
+      setError('Incorrect password.');
+      setLoading(false);
+      return;
+    }
+
+    // ✅ Step 3: Fetch role name using role_id
+    const { data: roleData, error: roleError } = await supabase
+      .from('roles')
+      .select('role_name')
+      .eq('role_id', profile.role_id)
+      .single();
+
+    if (roleError || !roleData) {
+      setError('Failed to fetch user role.');
+      setLoading(false);
+      return;
+    }
+
+    // ✅ Step 4: Store session-related data
+    localStorage.setItem('loggedInUser', profile.username);
+    localStorage.setItem('userId', profile.id);
+    localStorage.setItem('roleName', roleData.role_name);
+
+    console.log('✅ Login successful. Role:', roleData.role_name);
+
+    // ✅ Step 5: Redirect based on role
+    switch (roleData.role_name.toLowerCase()) {
+      case 'admin':
+        router.push('/pages/users');
+        break;
+      case 'manager':
+        router.push('/pages/projects');
+        break;
+      case 'designer':
+        router.push('/pages/components');
+        break;
+      default:
+        setError('Unauthorized role.');
+        break;
+    }
+  } catch (err: any) {
+    setError(err.message || 'An unexpected error occurred.');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="max-w-md mx-auto mt-16 p-8 bg-white shadow-lg rounded-xl">

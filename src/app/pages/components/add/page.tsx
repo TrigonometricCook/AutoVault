@@ -6,6 +6,7 @@ import { handleComponentSubmit } from '@/lib/addcomponent';
 
 export default function AddComponentPage() {
   const [file, setFile] = useState<File | null>(null);
+  const [replaceOld, setReplaceOld] = useState(false);
   const [form, setForm] = useState({
     part_number: '',
     part_name: '',
@@ -31,7 +32,7 @@ export default function AddComponentPage() {
     setSaveMessage('');
 
     try {
-      await handleComponentSubmit({ ...form, file });
+      await handleComponentSubmit({ ...form, file, replaceOld });
       setSaveMessage('Component saved successfully!');
     } catch (error) {
       console.error(error);
@@ -202,33 +203,47 @@ export default function AddComponentPage() {
           </div>
 
           {/* Action Buttons + Save Message */}
-          <div className="flex gap-4 mt-4 items-center">
+          <div className="grid grid-cols-3 gap-4 mt-6">
+            <button
+              type="button"
+              onClick={() => setReplaceOld((prev) => !prev)}
+              className={`w-full px-4 py-2 rounded text-white font-medium ${
+                replaceOld
+                  ? 'bg-blue-600 hover:bg-blue-700'
+                  : 'bg-gray-300 text-gray-800 hover:bg-gray-400'
+              }`}
+            >
+              {replaceOld ? 'Replacing Versions' : 'Replace Older Versions'}
+            </button>
+
             <button
               type="button"
               onClick={handleSubmit}
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+              className="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
               disabled={isSubmitting}
             >
               {isSubmitting ? 'Saving...' : 'Submit'}
             </button>
+
             <button
               type="button"
               onClick={() => router.back()}
-              className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+              className="w-full bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
               disabled={isSubmitting}
             >
               Cancel
             </button>
-            {saveMessage && (
-              <p
-                className={`text-sm ${
-                  saveMessage.includes('success') ? 'text-green-600' : 'text-red-600'
-                }`}
-              >
-                {saveMessage}
-              </p>
-            )}
           </div>
+
+          {saveMessage && (
+            <p
+              className={`text-sm mt-2 ${
+                saveMessage.includes('success') ? 'text-green-600' : 'text-red-600'
+              }`}
+            >
+              {saveMessage}
+            </p>
+          )}
         </form>
       </div>
     </div>

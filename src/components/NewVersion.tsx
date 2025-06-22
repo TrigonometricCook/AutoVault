@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { supabase } from '@/lib/supabase';
 
 type Version = {
   version_number: number;
@@ -35,8 +36,87 @@ export default function EditableVersionCard({ part_number, version, isNew, onCan
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSave = () => {
-    console.log('Saving with:', { ...form, file });
+  const handleSave = async () => {
+    try {
+      const { version_number, description, cost, status } = form;
+
+      if (!version_number) throw new Error('Version number is required.');
+
+      // Get current session
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData.session?.user?.email) {
+        throw new Error('Could not get current session.');
+      }
+
+      const actorEmail = sessionData.session.user.email;
+
+      // Get username of the current user
+      const { data: actorProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('email', actorEmail)
+        .single();
+
+      if (profileError || !actorProfile?.username) {
+        throw new Error('Could not fetch actor username.');
+      }
+
+      const actorUsername = actorProfile.username;
+
+      // Upload PDF file if selected
+      let filePath = version.file_path;
+      if (file) {
+        const ext = file.name.split('.').pop();
+        const newFilename = `${part_number}_v${version_number}.${ext}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('drawings') // your storage bucket
+          .upload(`versions/${newFilename}`, file, { upsert: true });
+
+        if (uploadError) {
+          throw new Error('File upload failed: ' + uploadError.message);
+        }
+
+        filePath = uploadData?.path || '';
+      }
+
+      // Insert into component_versions
+      const { error: insertError } = await supabase.from('component_versions').insert([
+        {
+          part_number,
+          version_number: parseInt(version_number),
+          description,
+          cost: cost ? parseFloat(cost) : null,
+          status,
+          file_path: filePath,
+          created_by: actorUsername,
+        },
+      ]);
+
+      if (insertError) {
+        throw new Error('Failed to save version: ' + insertError.message);
+      }
+
+      // Insert into audit_log
+      const record_id = `${part_number}_v${version_number}`;
+
+      const { error: auditError } = await supabase.from('audit_log').insert([
+        {
+          table_name: 'component_versions',
+          record_id,
+          action_type: 'new component version',
+          username: actorUsername,
+        },
+      ]);
+
+      if (auditError) {
+        throw new Error('Audit log failed: ' + auditError.message);
+      }
+
+      alert('Component version saved and logged successfully.');
+    } catch (err: any) {
+      console.error('Error:', err.message);
+      alert(err.message);
+    }
   };
 
   useEffect(() => {

@@ -1,8 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useUsers, UserData } from '@/lib/fetchusers';
-import { User, RefreshCcw, ArrowDownCircle, Filter, Edit2, Trash } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import {
+  User,
+  RefreshCcw,
+  ArrowDownCircle,
+  Filter,
+  Edit2,
+  Trash,
+} from 'lucide-react';
 
 type UserTableProps = {
   onEditUser: (user: UserData) => void;
@@ -10,16 +18,40 @@ type UserTableProps = {
 
 export default function UserTable({ onEditUser }: UserTableProps) {
   const { users, loading, error, fetchUsers, deleteUser } = useUsers();
+  const [actorUsername, setActorUsername] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'username' | 'email'>('username');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filterBy, setFilterBy] = useState<'all' | string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  const handleDelete = async (username: string) => {
+  useEffect(() => {
+    const fetchActorUsername = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const email = session?.user?.email;
+      if (!email) return;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('email', email)
+        .single();
+
+      if (!error && data?.username) {
+        setActorUsername(data.username);
+      }
+    };
+
+    fetchActorUsername();
+  }, []);
+
+  const handleDelete = async (targetUsername: string) => {
     const confirmDelete = window.confirm('Are you sure you want to delete this user?');
-    if (confirmDelete) {
-      await deleteUser(username);
-    }
+    if (!confirmDelete || !actorUsername) return;
+
+    await deleteUser(targetUsername, actorUsername);
   };
 
   const filteredUsers = users
@@ -42,7 +74,7 @@ export default function UserTable({ onEditUser }: UserTableProps) {
   const toggleSort = () => {
     if (sortBy === 'username') {
       setSortBy('email');
-      setSortDirection('asc'); // reset direction
+      setSortDirection('asc');
     } else {
       setSortBy('username');
       setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
@@ -54,11 +86,11 @@ export default function UserTable({ onEditUser }: UserTableProps) {
 
   return (
     <div className="space-y-6">
-      <div className="bg-[#003366] text-white p-4 rounded-t-xl rounded-b-xl flex items-center shadow-lg w-full max-w-5xl mx-auto">
+      <div className="bg-[#003366] text-white p-4 rounded-xl flex items-center shadow-lg max-w-5xl mx-auto">
         <input
           type="text"
           placeholder="Search by username..."
-          className="flex-grow h-10 pl-4 rounded-l-lg rounded-r-lg text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="flex-grow h-10 pl-4 rounded-lg text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
@@ -72,7 +104,7 @@ export default function UserTable({ onEditUser }: UserTableProps) {
             className="p-3 w-12 h-12 rounded-lg bg-white text-[#003366]"
             title={`Sort by ${sortBy === 'username' ? 'email' : 'username'}`}
           >
-            <ArrowDownCircle className="w-6 h-6 transform transition-transform duration-300"
+            <ArrowDownCircle className="w-6 h-6 transition-transform duration-300"
               style={{
                 transform: sortDirection === 'asc' ? 'rotate(0deg)' : 'rotate(180deg)',
               }}
@@ -116,10 +148,7 @@ export default function UserTable({ onEditUser }: UserTableProps) {
             <div className="flex gap-3">
               <button
                 className="p-2 rounded-lg bg-transparent text-gray-600"
-                onClick={() => {
-                  console.log('Editing user:', user);
-                  onEditUser(user);
-                }}
+                onClick={() => onEditUser(user)}
               >
                 <Edit2 className="w-5 h-5" />
               </button>

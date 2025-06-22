@@ -77,84 +77,90 @@ const SelectedItemsList = () => {
   }, [pdfFile]);
 
   const handleSave = async () => {
-    if (!assemblyName.trim()) {
-      alert("Assembly Name is required!");
-      return;
-    }
+  if (!assemblyName.trim()) {
+    alert("Assembly Name is required!");
+    return;
+  }
 
-    try {
-      const { data: newAssembly, error: assemblyError } = await supabase
+  try {
+    const { data: newAssembly, error: assemblyError } = await supabase
+      .from("assemblies")
+      .insert({
+        assembly_name: assemblyName,
+        description: description,
+        status: "draft",
+      })
+      .select("assembly_id")
+      .single();
+
+    if (assemblyError) throw assemblyError;
+
+    const assemblyId = newAssembly.assembly_id;
+
+    let uploadedFilePath = null;
+    if (pdfFile) {
+      const fileExt = pdfFile.name.split(".").pop();
+      const newFileName = `${assemblyId}.${fileExt}`;
+      const { data: fileData, error: fileError } = await supabase.storage
+        .from("assembly-drawings")
+        .upload(newFileName, pdfFile, {
+          contentType: "application/pdf",
+          upsert: true,
+        });
+
+      if (fileError) throw fileError;
+
+      uploadedFilePath = fileData.path;
+
+      const { error: updateError } = await supabase
         .from("assemblies")
-        .insert({
-          assembly_name: assemblyName,
-          description: description,
-          status: "draft",
-        })
-        .select("assembly_id")
-        .single();
+        .update({ file_path: uploadedFilePath })
+        .eq("assembly_id", assemblyId);
 
-      if (assemblyError) throw assemblyError;
-
-      const assemblyId = newAssembly.assembly_id;
-
-      let uploadedFilePath = null;
-      if (pdfFile) {
-        const fileExt = pdfFile.name.split(".").pop();
-        const newFileName = `${assemblyId}.${fileExt}`;
-        const { data: fileData, error: fileError } = await supabase.storage
-          .from("assembly-drawings")
-          .upload(newFileName, pdfFile, {
-            contentType: "application/pdf",
-            upsert: true,
-          });
-
-        if (fileError) throw fileError;
-
-        uploadedFilePath = fileData.path;
-
-        const { error: updateError } = await supabase
-          .from("assemblies")
-          .update({ file_path: uploadedFilePath })
-          .eq("assembly_id", assemblyId);
-
-        if (updateError) throw updateError;
-      }
-
-      const nodesToInsert = selectedItems.map((item) => {
-        const base = {
-          assembly_id: assemblyId,
-          quantity: item.quantity || 1,
-          component_part_number: null,
-          sub_assembly_id: null,
-          listing_id: null,
-        };
-
-        if (item.type === "component") {
-          return { ...base, component_part_number: item.id };
-        } else if (item.type === "assembly") {
-          return { ...base, sub_assembly_id: parseInt(item.id, 10) };
-        } else if (item.type === "product") {
-          return { ...base, listing_id: parseInt(item.id, 10) };
-        }
-        throw new Error("Unsupported item type");
-      });
-
-      const { error: nodeError } = await supabase
-        .from("assembly_nodes")
-        .insert(nodesToInsert);
-
-      if (nodeError) throw nodeError;
-
-      alert("Assembly saved successfully!");
-      setAssemblyName("");
-      setDescription("");
-      setPdfFile(null);
-      clearSelectedItems();
-    } catch (error: any) {
-      console.error("Error saving assembly:", error);
-      alert("Error saving assembly: " + error.message);
+      if (updateError) throw updateError;
     }
-  };
+
+    const nodesToInsert = selectedItems.map((item) => {
+      const base = {
+        assembly_id: assemblyId,
+        quantity: item.quantity || 1,
+        component_part_number: null,
+        sub_assembly_id: null,
+        listing_id: null,
+        component_version: null,
+      };
+
+      if (item.type === "component") {
+        return {
+          ...base,
+          component_part_number: item.id,
+          component_version: item.versionId?.toString() || null,
+        };
+      } else if (item.type === "assembly") {
+        return { ...base, sub_assembly_id: parseInt(item.id, 10) };
+      } else if (item.type === "product") {
+        return { ...base, listing_id: parseInt(item.id, 10) };
+      }
+      throw new Error("Unsupported item type");
+    });
+
+    const { error: nodeError } = await supabase
+      .from("assembly_nodes")
+      .insert(nodesToInsert);
+
+    if (nodeError) throw nodeError;
+
+    alert("Assembly saved successfully!");
+    setAssemblyName("");
+    setDescription("");
+    setPdfFile(null);
+    clearSelectedItems();
+  } catch (error: any) {
+    console.error("Error saving assembly:", error);
+    alert("Error saving assembly: " + error.message);
+  }
+};
+
 
   const handleClear = () => {
     setAssemblyName("");

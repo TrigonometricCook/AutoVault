@@ -8,6 +8,7 @@ export async function handleComponentSubmit(data: {
   version_number: string;
   cost: string;
   file: File | null;
+  replaceOld: boolean;
 }) {
   console.log('🚀 Starting component submission with data:', data);
 
@@ -19,6 +20,7 @@ export async function handleComponentSubmit(data: {
     version_number,
     cost,
     file,
+    replaceOld,
   } = data;
 
   // Get current user
@@ -102,13 +104,14 @@ export async function handleComponentSubmit(data: {
     status,
   });
 
-  // Insert component version
+  // Insert component version WITH replace_old for trigger
   const { error: versionError } = await supabase.from('component_versions').insert({
     part_number,
     version_number,
     file_path: filePath,
     created_by: username,
     cost: cost ? parseFloat(cost) : null,
+    replace_old: replaceOld, // 🔥 This enables the trigger to run
   });
 
   if (versionError) {
@@ -122,6 +125,7 @@ export async function handleComponentSubmit(data: {
     file_path: filePath,
     created_by: username,
     cost: cost ? parseFloat(cost) : null,
+    replace_old: replaceOld,
   });
 
   console.log('🎉 Component submission completed successfully!');
